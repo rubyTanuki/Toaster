@@ -4,9 +4,11 @@ import sqlite_vec
 from pathlib import Path
 from contextlib import contextmanager
 
-class SQLiteCache:
-    def __init__(self, db_path: Path | str):
-        self.db_path = Path(db_path)
+from tostr.core.paths import ProjectPaths
+
+class SQLiteClient:
+    def __init__(self, paths: ProjectPaths):
+        self.db_path = paths.cache_path / "cache.db"
         if not self.db_path.parent.exists():
             self.db_path.parent.mkdir(parents=True)
         self.init_db()
