@@ -6,9 +6,9 @@ from contextlib import contextmanager
 
 from tostr.core.paths import ProjectPaths
 
-class SQLiteClient:
+class SqliteClient:
     def __init__(self, paths: ProjectPaths):
-        self.db_path = paths.cache_path / "cache.db"
+        self.db_path = paths.db_path
         if not self.db_path.parent.exists():
             self.db_path.parent.mkdir(parents=True)
         self.init_db()
