@@ -4,4 +4,7 @@ from .parser import BaseParser
 from .registry import Registry
 from .serializer import tost, InspectResult, SkeletonResult, SearchResult
 from .providers import LanguageProvider
-from .db import SQLiteCache
+
+from .db import SqliteClient
+from .paths import ProjectPaths
+from .cache import StructCache
