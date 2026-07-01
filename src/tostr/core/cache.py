@@ -1,25 +1,39 @@
 from __future__ import annotations
 import json
 from pathlib import Path
-from typing import Optional, List, Set
+from typing import Optional, List, Set, Dict, TYPE_CHECKING
 from collections import defaultdict
 import sqlite_vec
 
 from tostr.core.db import SqliteClient
 from tostr.core.paths import ProjectPaths
-from tostr.core.store import StructStore
+from tostr.core import lockfile
 from tostr.core.models import *
 from tostr.core.builders import BaseBuilder
 
 from loguru import logger
 
+if TYPE_CHECKING:
+    from tostr.core.registry import Registry
+
+
+def _deserialize_float32(blob) -> Optional[List[float]]:
+    """Inverse of sqlite_vec.serialize_float32: turn a stored vector blob back into a float list."""
+    if blob is None:
+        return None
+    import struct as _s
+    return list(_s.unpack(f"{len(blob) // 4}f", blob))
+
+
 class StructCache:
-    """Wrapper on SqliteClient for struct caching read/write"""
-    def __init__(self, paths: ProjectPaths, struct_store: StructStore, use_cache: bool = True):
+    """Persistence layer over SqliteClient: hydrates structs into the store, writes them back,
+    and runs the lockfile / carry-over reconciliation. Holds a `Registry` as its `struct_store`."""
+    def __init__(self, paths: ProjectPaths, struct_store: "Registry", use_cache: bool = True, use_lockfile: bool = True):
         self.paths = paths
         self.db = SqliteClient(self.paths)
         self.struct_store = struct_store
         self.use_cache = use_cache
+        self.use_lockfile = use_lockfile
 
     #region READ/HYDRATE
 
@@ -303,5 +317,92 @@ class StructCache:
                     self._prune_file_path(conn, path_str, kept_ids)
 
             conn.commit()
+
+    #endregion
+
+    #region RECONCILIATION (lockfile / carry-over)
+
+    def carry_over_unchanged(self, path_str: Optional[str] = None) -> int:
+        """Reuse cached descriptions + vectors for any in-memory struct whose body is unchanged (its
+        freshly-computed `diff_hash` matches the stored row), so only *changed* or *new* members pay
+        the expensive regeneration cost. The describer skips LLM generation when `description` is
+        already set, and the embedder skips when `vector` is set. A leaf method's hash is its own
+        body; a class/file hash covers all nested text, so an edited method correctly forces its
+        class and file to regenerate while untouched siblings are carried over.
+
+        `path_str` scopes the lookup to one reparsed file (the watcher's incremental path); pass
+        None to carry over across the *entire* prior cache, which is what a full `tostr parse` does
+        so an unchanged project isn't re-described from scratch. Returns the number carried over."""
+        if not self.db:
+            return 0
+        rows = self.db.struct_descriptions(path_str)
+        prev: Dict[str, dict] = {}
+        id_to_uid: Dict[str, str] = {}
+        for r in rows:
+            prev[r["uid"]] = {"diff_hash": r["diff_hash"], "description": r["description"] or "", "vector": None}
+            id_to_uid[str(r["id"])] = r["uid"]
+        for sid, vec in self.db.vectors_for_ids(id_to_uid):
+            uid = id_to_uid.get(str(sid))
+            if uid:
+                prev[uid]["vector"] = _deserialize_float32(vec)
+
+        carried = 0
+        for struct in self.struct_store.uid_map.values():
+            p = prev.get(struct.uid)
+            if not p or not struct.diff_hash or p["diff_hash"] != struct.diff_hash:
+                continue
+            desc = p["description"]
+            if desc.startswith("[STALE] "):  # a prior interrupted update may have left the marker
+                desc = desc[len("[STALE] "):]
+            if desc:
+                struct.description = desc
+            if p["vector"] is not None:
+                struct.vector = p["vector"]
+            carried += 1
+        if carried:
+            scope = f"under '{path_str}'" if path_str is not None else "across the project"
+            logger.debug(f"Carried over {carried} unchanged struct description(s)/vector(s) {scope}")
+        return carried
+
+    def collect_descriptions(self, with_vectors: bool = False) -> Dict[str, dict]:
+        """Read every struct carrying a usable description from the cache into a
+        `{uid: {diff_hash, description, vector?}}` map for the lockfile exporter. The `(uid,
+        diff_hash)` shape mirrors what `carry_over_unchanged` / the describer's lockfile seed consume,
+        so an exported entry is reused only while the body is unchanged. Empty and `[STALE] `
+        descriptions are excluded. Vectors are included only when `with_vectors` is set (otherwise the
+        consumer re-embeds locally for free). Read half of the lockfile round-trip."""
+        if not self.db:
+            return {}
+        entries: Dict[str, dict] = {}
+        rows = self.db.struct_descriptions(non_empty=True)
+        id_to_uid: Dict[str, str] = {}
+        for row in rows:
+            description = row["description"]
+            if description.startswith("[STALE] "):
+                continue
+            uid = row["uid"]
+            entries[uid] = {"diff_hash": row["diff_hash"] or "", "description": description}
+            id_to_uid[str(row["id"])] = uid
+
+        if with_vectors:
+            for struct_id, vector in self.db.vectors_for_ids(id_to_uid):
+                uid = id_to_uid.get(str(struct_id))
+                deserialized = _deserialize_float32(vector)
+                if uid and deserialized is not None:
+                    entries[uid]["vector"] = deserialized
+        return entries
+
+    def load_lockfile_lookup(self) -> Dict[str, dict]:
+        """Load the committed `tostr.lock.json` into an in-memory `{uid: {diff_hash, description,
+        vector?}}` lookup for the describer to consult as a *second* description source — after the
+        live cache (`carry_over_unchanged`) and before the LLM. Returns `{}` when seeding is disabled
+        (`use_lockfile` False) or no usable lockfile exists."""
+        if not self.use_lockfile or not self.paths.project_path:
+            return {}
+        entries = lockfile.read(self.paths.project_path)
+        if not entries:
+            return {}
+        logger.debug(f"Loaded {len(entries)} lockfile entr(ies) from {lockfile.LOCKFILE_NAME}")
+        return entries
 
     #endregion

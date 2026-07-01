@@ -3,6 +3,7 @@ import sqlite3
 import sqlite_vec
 from pathlib import Path
 from contextlib import contextmanager
+from typing import Optional, List, Dict
 
 from tostr.core.paths import ProjectPaths
 
@@ -111,3 +112,63 @@ class SqliteClient:
                 conn.execute(f"PRAGMA user_version = {CURRENT_CACHE_VERSION}")
 
             conn.commit()
+
+    def struct_type_counts(self) -> Dict[str, int]:
+        """`{struct_type: count}` across the whole cache (for `status`)."""
+        with self.get_connection() as conn:
+            return {r["type"]: r["count"]
+                    for r in conn.execute("SELECT type, COUNT(*) AS count FROM structs GROUP BY type")}
+
+    def edge_count(self) -> int:
+        with self.get_connection() as conn:
+            return conn.execute("SELECT COUNT(*) FROM edges").fetchone()[0]
+
+    def uid_to_id(self, uid: str) -> Optional[str]:
+        with self.get_connection() as conn:
+            row = conn.execute("SELECT id FROM structs WHERE uid = ?", (uid,)).fetchone()
+            return row[0] if row else None
+
+    def struct_exists(self, uid: str) -> bool:
+        with self.get_connection() as conn:
+            return conn.execute("SELECT 1 FROM structs WHERE uid = ? LIMIT 1", (uid,)).fetchone() is not None
+
+    def vector_search(self, query_vector, k: int, filter_type: Optional[str] = None) -> List[sqlite3.Row]:
+        """K-nearest structs by embedding distance, optionally filtered by type. Returns raw rows
+        (uid, id, type, distance); the caller shapes them into SearchResults."""
+        with self.get_connection() as conn:
+            sql = (
+                "SELECT s.uid, s.id, s.type, v.distance "
+                "FROM vec_structs v JOIN structs s ON s.id = v.struct_id "
+                "WHERE v.vector MATCH ? AND v.k = ?"
+            )
+            params = [sqlite_vec.serialize_float32(query_vector), k]
+            if filter_type:
+                sql += " AND s.type LIKE ?"
+                params.append(f"%{filter_type}%")
+            return conn.execute(sql, params).fetchall()
+
+    def struct_descriptions(self, path_str: Optional[str] = None, non_empty: bool = False) -> List[sqlite3.Row]:
+        """Rows of (id, uid, diff_hash, description) for carry-over reconciliation / lockfile export.
+        `path_str` scopes to a single reparsed file; `non_empty` excludes blank descriptions."""
+        sql = "SELECT id, uid, diff_hash, description FROM structs"
+        clauses, params = [], []
+        if path_str is not None:
+            clauses.append("path = ?")
+            params.append(path_str)
+        if non_empty:
+            clauses.append("description IS NOT NULL AND description != ''")
+        if clauses:
+            sql += " WHERE " + " AND ".join(clauses)
+        with self.get_connection() as conn:
+            return conn.execute(sql, params).fetchall()
+
+    def vectors_for_ids(self, ids) -> List[sqlite3.Row]:
+        """Raw (struct_id, vector) rows for the given struct ids (caller deserializes the blobs)."""
+        ids = [str(i) for i in ids]
+        if not ids:
+            return []
+        placeholders = ",".join("?" * len(ids))
+        with self.get_connection() as conn:
+            return conn.execute(
+                f"SELECT struct_id, vector FROM vec_structs WHERE struct_id IN ({placeholders})", ids
+            ).fetchall()
