@@ -37,29 +37,31 @@ def resolve_all(registry):
 def test_simple_import(tmp_path, registry):
     code = "import os\nimport os.path\n"
     f = build(registry, tmp_path, "a.py", code)
-    assert "os" in f.imports
-    assert "os.path" in f.imports
+    # Module imports normalize to file-scope UID candidates.
+    assert "os.py" in f.imports
+    assert "os/path.py" in f.imports
 
 
 def test_aliased_module_import_stores_original(tmp_path, registry):
     code = "import collections as col\n"
     f = build(registry, tmp_path, "a.py", code)
-    assert "collections" in f.imports
-    assert "collections as col" not in f.imports
+    assert "collections.py" in f.imports
     assert not any("as" in imp for imp in f.imports)
+    assert not any(" " in imp for imp in f.imports)
 
 
 def test_aliased_named_import_stores_original_uid(tmp_path, registry):
     code = "from pathlib import Path as P\n"
     f = build(registry, tmp_path, "a.py", code)
-    assert "pathlib.Path" in f.imports
-    assert "pathlib.P" not in f.imports
+    # The alias is dropped; the import normalizes to the real symbol's UID candidate.
+    assert "pathlib.py#Path" in f.imports
+    assert not any("#P" in imp and "#Path" not in imp for imp in f.imports)
 
 
 def test_wildcard_import(tmp_path, registry):
     code = "from math import *\n"
     f = build(registry, tmp_path, "a.py", code)
-    assert "math.*" in f.imports
+    assert "math.py.*" in f.imports
 
 
 # ---------------------------------------------------------------------------
@@ -162,7 +164,7 @@ class UserService:
     resolve_all(registry)
 
     create = [x for x in registry.methods if x.name == "create"][0]
-    user_class = registry.get_struct_by_uid("models.User")
+    user_class = registry.get_struct_by_uid("models.py#User")
     assert user_class in create.outbound_dependencies
 
 
@@ -233,7 +235,7 @@ class Service:
     resolve_all(registry)
 
     run = [x for x in registry.methods if x.name == "run"][0]
-    user_class = registry.get_struct_by_uid("models.User")
+    user_class = registry.get_struct_by_uid("models.py#User")
     assert user_class in run.outbound_dependencies
 
 
@@ -315,8 +317,8 @@ class Dog(Animal):
     build(registry, tmp_path, "animals.py", code)
     resolve_all(registry)
 
-    dog = registry.get_struct_by_uid("animals.Dog")
-    animal = registry.get_struct_by_uid("animals.Animal")
+    dog = registry.get_struct_by_uid("animals.py#Dog")
+    animal = registry.get_struct_by_uid("animals.py#Animal")
     assert animal in dog.outbound_dependencies
 
 
@@ -339,7 +341,7 @@ def test_relative_import_resolution(tmp_path, registry):
     resolve_all(registry)
 
     run = [x for x in registry.methods if x.name == "run"][0]
-    item_class = registry.get_struct_by_uid("pkg.models.Item")
+    item_class = registry.get_struct_by_uid("pkg/models.py#Item")
     assert item_class in run.outbound_dependencies
 
 
@@ -365,7 +367,7 @@ class Bar:
     resolve_all(registry)
 
     run = [x for x in registry.methods if x.name == "run"][0]
-    foo = registry.get_struct_by_uid("models.Foo")
+    foo = registry.get_struct_by_uid("models.py#Foo")
     # Wildcard matches land in outbound_dependencies (if unambiguous) or fuzzy
     all_deps = run.outbound_dependencies | run.outbound_dependencies_fuzzy
     assert foo in all_deps

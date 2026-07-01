@@ -37,9 +37,9 @@ GLOBAL_VAR = 10
     file_obj = builder.from_path(path)
     
     # 1. Test Imports
-    assert "os" in file_obj.imports
-    assert "sys.path" in file_obj.imports
-    assert "math.*" in file_obj.imports
+    assert "os.py" in file_obj.imports
+    assert "sys.py#path" in file_obj.imports
+    assert "math.py.*" in file_obj.imports
     
     # 2. Test Package (Module path)
     assert file_obj.package == "app"

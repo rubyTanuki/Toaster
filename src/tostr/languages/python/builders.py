@@ -10,6 +10,24 @@ from tostr.core.builders import BaseBuilder, BaseFileBuilder, BaseClassBuilder, 
 from tostr.languages.python.queries import DEPENDENCY_QUERY
 from tostr.core.models import *
 
+
+def _module_scope_candidates(module_dotted: str) -> list[str]:
+    """Normalized file-UID candidates for a dotted module path — the module as a file and
+    as a package __init__. Non-existent candidates are pruned at resolution time."""
+    base = module_dotted.replace(".", "/")
+    return [f"{base}.py", f"{base}/__init__.py"]
+
+
+def _member_candidates(module_dotted: str, member: str) -> list[str]:
+    """UID candidates for `member` imported from `module_dotted`: the class/field form
+    (`mod.py#member`) and the callable form (`mod.py#member(...)`)."""
+    out = []
+    for mod in _module_scope_candidates(module_dotted):
+        out.append(f"{mod}#{member}")
+        out.append(f"{mod}#{member}(...)")
+    return out
+
+
 class PythonBuilder(BaseBuilder):
     def build_file(self) -> PythonFileBuilder:
         return PythonFileBuilder(self.registry)
@@ -54,11 +72,12 @@ class PythonFileBuilder(BaseFileBuilder):
                         alias_node = name_child.child_by_field_name("alias")
                         if original_node:
                             original = original_node.text.decode('utf-8')
-                            imports.append(original)
+                            imports.extend(_module_scope_candidates(original))
                             if alias_node:
-                                alias_map[alias_node.text.decode('utf-8')] = original
+                                # Alias binds the module's top-level name; receivers resolve via it.
+                                alias_map[alias_node.text.decode('utf-8')] = original.split('.')[0]
                     else:
-                        imports.append(name_child.text.decode('utf-8'))
+                        imports.extend(_module_scope_candidates(name_child.text.decode('utf-8')))
 
             elif child.type == "import_from_statement":
                 module_name = ""
@@ -95,7 +114,7 @@ class PythonFileBuilder(BaseFileBuilder):
                 if module_name:
                     has_wildcard = any(gc.type == "wildcard_import" for gc in child.children)
                     if has_wildcard:
-                        imports.append(f"{module_name}.*")
+                        imports.extend(f"{mod}.*" for mod in _module_scope_candidates(module_name))
                     else:
                         for gc in child.named_children:
                             if gc.type in {"aliased_import", "dotted_name", "identifier"}:
@@ -105,12 +124,12 @@ class PythonFileBuilder(BaseFileBuilder):
                                     name_node = gc.child_by_field_name("name") or gc
                                     alias_node = gc.child_by_field_name("alias")
                                     imp_name = name_node.text.decode('utf-8')
-                                    original_uid = f"{module_name}.{imp_name}"
-                                    imports.append(original_uid)
+                                    imports.extend(_member_candidates(module_name, imp_name))
                                     if alias_node:
-                                        alias_map[alias_node.text.decode('utf-8')] = original_uid
+                                        # Alias binds the imported symbol; refs normalize to its real name.
+                                        alias_map[alias_node.text.decode('utf-8')] = imp_name
                                 else:
-                                    imports.append(f"{module_name}.{gc.text.decode('utf-8')}")
+                                    imports.extend(_member_candidates(module_name, gc.text.decode('utf-8')))
 
         file_obj.imports = list(set(imports))
 

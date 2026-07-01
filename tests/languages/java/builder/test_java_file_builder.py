@@ -39,9 +39,9 @@ def test_java_file_builder_parses_structure(java_test_file, mock_registry):
     
     file_obj = builder.from_path(java_test_file)
     
-    assert file_obj.package == "com.tostr.test"
-    assert "java.util.List" in file_obj.imports
-    assert "java.util.ArrayList" in file_obj.imports
+    assert file_obj.package == "com/tostr/test"
+    assert "java/util/List.java#List" in file_obj.imports
+    assert "java/util/ArrayList.java#ArrayList" in file_obj.imports
     assert file_obj.body.strip().startswith("package com.tostr.test;")
     
     assert mock_registry.add_struct.call_count == 3

@@ -65,10 +65,10 @@ def test_agnostic_receiver_heuristic(registry):
 def test_agnostic_import_resolution(registry):
     """Tests that the resolver respects normalized imports."""
     file_obj = BaseFile(uid="test.py", name="test.py", registry=registry)
-    # Normalized import: "other.Member"
-    file_obj.imports = ["other.Member"]
-    
-    other_member = BaseClass(uid="other.Member", name="Member", registry=registry)
+    # Normalized import candidate: path-format member UID.
+    file_obj.imports = ["other.py#Member"]
+
+    other_member = BaseClass(uid="other.py#Member", name="Member", registry=registry)
     registry.add_struct(other_member)
     
     # Code creating 'Member'
