@@ -2,7 +2,6 @@ from __future__ import annotations
 import asyncio
 import os
 import shutil
-import sqlite_vec
 from pathlib import Path
 from watchfiles import awatch, Change
 from loguru import logger
@@ -10,7 +9,7 @@ from functools import lru_cache
 
 from tostr.semantic.llm import LLMClient
 from tostr.semantic.embeddings import EmbeddingClient, EmbeddingStrategy, OnnxEmbeddingStrategy
-from tostr.core import Registry, tost, InspectResult, SkeletonResult, SearchResult, BaseParser, SQLiteCache, BaseCodeStruct
+from tostr.core import Registry, tost, InspectResult, SkeletonResult, SearchResult, BaseParser, SqliteClient, ProjectPaths, StructCache, BaseCodeStruct
 from tostr.core import lockfile
 from tostr.core.context.config import ProjectConfig, default_ignore_text
 
@@ -21,7 +20,7 @@ def _verify_db_exists(target_path: Path):
     """Ensure an initialized Tostr database exists for the given project path.
 
     target_path is the project root; the actual database lives at
-    .tostr/cache.db inside it. Raising here (instead of letting SQLiteCache
+    .tostr/cache.db inside it. Raising here (instead of letting SqliteClient
     lazily create an empty schema) gives the user a clean 'run init first'
     message rather than a downstream stack trace.
     """
@@ -78,10 +77,10 @@ def export_lockfile(target_path: Path, with_vectors: bool = False) -> dict:
     zero recompute at the cost of a larger, merge-noisy file. Returns {path, entries_written,
     changed}."""
     _verify_db_exists(target_path)
-    db = SQLiteCache(target_path / ".tostr" / "cache.db")
-    registry = Registry(db=db, use_cache=True, project_path=target_path)
+    registry = Registry(project_path=target_path)
+    cache = StructCache(ProjectPaths(target_path), struct_store=registry)
 
-    entries = registry.collect_descriptions(with_vectors=with_vectors)
+    entries = cache.collect_descriptions(with_vectors=with_vectors)
     changed = lockfile.write(target_path, entries)
 
     return {"path": str(lockfile.path_for(target_path)), "entries_written": len(entries), "changed": changed}
@@ -98,27 +97,22 @@ def get_status(target_path: Path) -> dict:
     }
 
     if status["db_exists"]:
-        db = SQLiteCache(db_path)
-        with db.get_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute("SELECT type, COUNT(*) as count FROM structs GROUP BY type")
-            rows = cursor.fetchall()
-            for row in rows:
-                status["counts"][row["type"]] = row["count"]
-            
-            cursor.execute("SELECT COUNT(*) FROM edges")
-            status["counts"]["edges"] = cursor.fetchone()[0]
+        db = SqliteClient(ProjectPaths(target_path))
+        counts = db.struct_type_counts()
+        counts["edges"] = db.edge_count()
+        status["counts"] = counts
 
     return status
 
 async def _build_ast_async(target_path: Path, config: ProjectConfig, use_cache: bool = True, progress_tracker: "ProgressTracker" = None, no_llm: bool = False) -> BaseParser:
     llm = None if no_llm else get_llm_client(config, progress_tracker=progress_tracker)
     embedder = get_cached_embedding_client(progress_tracker=progress_tracker)
-    db = SQLiteCache(target_path / ".tostr" / "cache.db")
-    registry = Registry(use_cache=use_cache, db=db, project_path=target_path, progress_tracker=progress_tracker, config=config)
+    paths = ProjectPaths(target_path)
+    registry = Registry(project_path=target_path, progress_tracker=progress_tracker, config=config)
+    cache = StructCache(paths, struct_store=registry, use_cache=use_cache)
     logger.info("Building AST...")
 
-    parser = BaseParser(target_path, llm, embedder, registry)
+    parser = BaseParser(target_path, llm, embedder, registry, cache)
     logger.info("Parsing files...")
     await parser.parse()
     logger.success("✅ Parsed files")
@@ -246,22 +240,20 @@ async def parse_async(target_path: Path, use_cache: bool = True, language: str |
     parser = await _build_ast_async(target_path, config, use_cache=use_cache, progress_tracker=progress_tracker, no_llm=no_llm)
 
     # Write Cache
-    parser.registry.save_to_cache()
+    parser.cache.save_to_cache()
 
 def resolve_uid_to_id(uid: str, project_path: Path) -> str:
     """Simplifies UID to ID resolution by querying the database directly."""
     _verify_db_exists(project_path)
-    db = SQLiteCache(project_path / ".tostr" / "cache.db")
-    with db.get_connection() as conn:
-        row = conn.execute("SELECT id FROM structs WHERE uid = ?", (uid,)).fetchone()
-        return row[0] if row else None
+    db = SqliteClient(ProjectPaths(project_path))
+    return db.uid_to_id(uid)
     
 async def inspect_async(struct_ids: list[str], project_path: Path, include_body: bool = False):
     _verify_db_exists(project_path)
     
-    db = SQLiteCache(project_path / ".tostr" / "cache.db")
-    registry = Registry(db=db, use_cache=True, project_path=project_path)
-    
+    registry = Registry(project_path=project_path)
+    cache = StructCache(ProjectPaths(project_path), struct_store=registry)
+
     results = []
     for struct_id in struct_ids:
         # Check if it's a UID and needs resolution
@@ -270,7 +262,7 @@ async def inspect_async(struct_ids: list[str], project_path: Path, include_body:
             if resolved_id:
                 struct_id = resolved_id
         
-        struct_obj = registry.get_struct_by_id(struct_id)
+        struct_obj = cache.get_struct_by_id(struct_id)
         if struct_obj is None:
             results.append(f"Error: Struct not found with id/uid {struct_id}.")
             continue
@@ -282,13 +274,13 @@ async def inspect_async(struct_ids: list[str], project_path: Path, include_body:
 async def skeleton_async(subpath: str, project_path: Path, depth: int = 7, files_only: bool = False):
     _verify_db_exists(project_path)
     
-    db = SQLiteCache(project_path / ".tostr" / "cache.db")
-    registry = Registry(db=db, project_path=project_path)
-    
+    registry = Registry(project_path=project_path)
+    cache = StructCache(ProjectPaths(project_path), struct_store=registry)
+
     subpath = Path(project_path / subpath)
     logger.debug(f"Loading subtree for path: {subpath}")
-    
-    registry.load_filepath(subpath)
+
+    cache.load_filepath(subpath)
     if not registry.files:
         raise FileNotFoundError(f"No files found matching path '{subpath}'.")
     
@@ -358,37 +350,19 @@ async def search_async(query: str, project_path: Path, filter_type: str = None, 
     embedder = get_cached_embedding_client()
     query_vector = embedder.strategy.embed_query(query)
     
-    db = SQLiteCache(project_path / ".tostr" / "cache.db")
-    
-    # We fetch a larger k from the vector index to allow room for the JOIN filter
+    db = SqliteClient(ProjectPaths(project_path))
+
+    # Fetch a larger k from the vector index to leave room for the type filter.
     k_to_fetch = top_k * 10 if filter_type else top_k
-    
-    with db.get_connection() as conn:
-        query_vec_bytes = sqlite_vec.serialize_float32(query_vector)
-        
-        sql = """
-            SELECT s.uid, s.id, s.type, v.distance
-            FROM vec_structs v
-            JOIN structs s ON s.id = v.struct_id
-            WHERE v.vector MATCH ?
-            AND v.k = ?
-        """
-        params = [query_vec_bytes, k_to_fetch]
-        
-        if filter_type:
-            sql += " AND s.type LIKE ?"
-            params.append(f"%{filter_type}%")
-            
-        cursor = conn.execute(sql, params)
-        rows = cursor.fetchall()
-        
-        results = []
-        for row in rows:
-            results.append(SearchResult(id=row['id'], uid=row['uid'], type=row['type'], distance=row['distance']))
-            if len(results) >= top_k:
-                break
-                
-        return results
+    rows = db.vector_search(query_vector, k_to_fetch, filter_type)
+
+    results = []
+    for row in rows:
+        results.append(SearchResult(id=row['id'], uid=row['uid'], type=row['type'], distance=row['distance']))
+        if len(results) >= top_k:
+            break
+
+    return results
 
 async def _guarded_write(write_lock: "asyncio.Lock | None", filepath: Path, fn, *args, **kwargs):
     """Run a DB-mutating call off-loop, serialized behind `write_lock` when one is supplied
@@ -411,10 +385,10 @@ async def process_file_deletion(project_dir: Path, filepath: Path, write_lock: "
     builders store it; `delete_path_subtree` cascades for directories via a path-prefix match."""
     logger.info(f"Processing deletion {filepath}")
     try:
-        db = SQLiteCache(project_dir / ".tostr" / "cache.db")
-        registry = Registry(db=db, use_cache=True, project_path=project_dir)
+        registry = Registry(project_path=project_dir)
+        cache = StructCache(ProjectPaths(project_dir), struct_store=registry)
         rel_path = str(registry.relative_to_project(Path(filepath)))
-        removed = await _guarded_write(write_lock, filepath, registry.delete_path_subtree, rel_path)
+        removed = await _guarded_write(write_lock, filepath, cache.delete_path_subtree, rel_path)
         logger.debug(f"✅ Deleted {len(removed or [])} struct(s) for {rel_path}")
     except asyncio.CancelledError:
         logger.warning(f"Deletion task cancelled on {filepath}")
@@ -428,11 +402,10 @@ async def process_file_deletion(project_dir: Path, filepath: Path, write_lock: "
 async def process_single_file(project_dir: Path, filepath: Path, llm_client: LLMClient, write_lock: "asyncio.Lock | None" = None):
     logger.info(f"Processing file {filepath}")
     try:
-        db = SQLiteCache(project_dir / ".tostr" / "cache.db")
-
-        registry = Registry(db=db, use_cache=True, project_path=project_dir)
+        registry = Registry(project_path=project_dir)
+        cache = StructCache(ProjectPaths(project_dir), struct_store=registry)
         embedder = get_cached_embedding_client()
-        parser = BaseParser(filepath, llm=llm_client, embedder=embedder, registry=registry)
+        parser = BaseParser(filepath, llm=llm_client, embedder=embedder, registry=registry, cache=cache)
 
         parser.parse_path(filepath)
 
@@ -450,14 +423,14 @@ async def process_single_file(project_dir: Path, filepath: Path, llm_client: LLM
         # Reuse cached descriptions/vectors for members whose body is unchanged, so the describe +
         # embed pass below only regenerates what actually changed (must run before both writes so
         # the stale write doesn't blank carried-over descriptions).
-        await asyncio.to_thread(registry.carry_over_unchanged, prune_paths[0])
+        await asyncio.to_thread(cache.carry_over_unchanged, prune_paths[0])
 
-        await _guarded_write(write_lock, filepath, registry.save_to_cache, stale=True, prune_paths=prune_paths)
+        await _guarded_write(write_lock, filepath, cache.save_to_cache, stale=True, prune_paths=prune_paths)
         logger.debug("Wrote Cache w/ stale descriptions")
 
         # resolve the descriptions and do the second cache write
         await parser.resolve_descriptions_async()
-        await _guarded_write(write_lock, filepath, registry.save_to_cache, prune_paths=prune_paths)
+        await _guarded_write(write_lock, filepath, cache.save_to_cache, prune_paths=prune_paths)
         logger.debug("Wrote Cache w/ resolved descriptions")
 
         logger.debug(f"✅ Processed file {filepath}")

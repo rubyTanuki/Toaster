@@ -16,7 +16,8 @@ import pytest
 
 import tostr.commands as commands
 from tostr.commands import parse_async, process_single_file, process_file_deletion, watch_async
-from tostr.core.db import SQLiteCache
+from tostr.core.db import SqliteClient
+from tostr.core.paths import ProjectPaths
 from tostr.exceptions import APIKeyError
 
 # Whole module is integration: it runs a real init (downloads/loads the embedding
@@ -82,8 +83,8 @@ async def test_process_single_file_updates_tree(no_llm, project):
 
 # --- Phase 2: diff-based cache sync (orphan purge + tree-attachment) -------------------------
 
-def _db(proj: Path) -> SQLiteCache:
-    return SQLiteCache(proj / ".tostr" / "cache.db")
+def _db(proj: Path) -> SqliteClient:
+    return SqliteClient(ProjectPaths(proj))
 
 
 def all_uids(proj: Path) -> list[str]:

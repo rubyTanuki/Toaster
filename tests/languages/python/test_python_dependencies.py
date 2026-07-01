@@ -10,7 +10,7 @@ from tostr.core.models import BaseStruct
 def registry(tmp_path):
     (tmp_path / ".tostr").mkdir()
     (tmp_path / "tostr.toml").write_bytes(b'[project]\nlanguage = "python"\n')
-    return Registry(project_path=tmp_path, use_cache=False)
+    return Registry(project_path=tmp_path)
 
 
 def build(registry, tmp_path, filename, code):
