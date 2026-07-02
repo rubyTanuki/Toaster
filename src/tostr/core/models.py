@@ -317,7 +317,7 @@ class BaseClass(BaseCodeStruct):
         # resolve import dependencies
         for imp in self.imports:
             if not imp.endswith(".*"):
-                import_dependency = self.registry.get_struct_by_uid(imp)
+                import_dependency = self.registry.resolve_import(imp)
                 if import_dependency:
                     self.add_dependency(import_dependency)
         

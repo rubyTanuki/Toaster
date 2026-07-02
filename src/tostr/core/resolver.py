@@ -96,13 +96,13 @@ class BaseDependencyResolver:
         # 3. Imports: a named candidate whose bound name matches, or a wildcard scope to walk.
         for imp in self._scope_imports(scope):
             if imp.endswith(".*"):
-                scope_struct = self.registry.get_struct_by_uid(imp[:-2])
+                scope_struct = self.registry.resolve_import(imp[:-2])
                 if scope_struct:
                     hit = self._find_named_class(scope_struct, simple)
                     if hit:
                         return hit
             elif self._imported_name(imp) == simple:
-                dep = self.registry.get_struct_by_uid(imp)
+                dep = self.registry.resolve_import(imp)
                 if dep:
                     return dep
         return None
@@ -261,8 +261,17 @@ class BaseDependencyResolver:
         if f:
             parents.append(f.uid)
 
-        # Normalized import candidates (named member UIDs + wildcard scope markers).
-        parents.extend(self._scope_imports(parent))
+        # Normalized import candidates -> resolved to real scope UIDs (bridges the source-root
+        # prefix offset so absolute imports in a src-layout still find their target scope).
+        for imp in self._scope_imports(parent):
+            if imp.endswith(".*"):
+                s = self.registry.resolve_import(imp[:-2])
+                if s:
+                    parents.append(s.uid + ".*")
+            else:
+                s = self.registry.resolve_import(imp)
+                if s:
+                    parents.append(s.uid)
 
         # Inheritance parents, resolved to their UIDs.
         for inh in getattr(parent, "inherits", []) or []:

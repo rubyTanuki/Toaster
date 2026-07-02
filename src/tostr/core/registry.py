@@ -93,5 +93,20 @@ class Registry:
         """In-memory lookup by normalized UID (exact). DB hydration lives in StructCache."""
         return self.uid_map.get(uid)
 
+    def resolve_import(self, candidate: str) -> Optional["BaseStruct"]:
+        """Resolve an import UID *candidate* to a struct: exact match first, else a path-suffix
+        match. Absolute imports are namespaced from a source root (e.g. `pkg.a`), but file UIDs are
+        project-root-relative, so a `src/`-layout package yields candidate `pkg/a.py#A` for the real
+        UID `src/pkg/a.py#A`. Matching the candidate as a trailing path segment bridges that offset
+        without the builder needing to know the source root."""
+        exact = self.uid_map.get(candidate)
+        if exact is not None:
+            return exact
+        tail = "/" + candidate
+        for uid, struct in self.uid_map.items():
+            if uid.endswith(tail):
+                return struct
+        return None
+
     def get_struct_by_id(self, id: str) -> Optional["BaseStruct"]:
         return self.id_map.get(str(id))
