@@ -24,7 +24,7 @@ def _verify_db_exists(target_path: Path):
     lazily create an empty schema) gives the user a clean 'run init first'
     message rather than a downstream stack trace.
     """
-    db_path = Path(target_path) / ".tostr" / "cache.db"
+    db_path = ProjectPaths(Path(target_path)).db_path
     if not db_path.exists():
         raise DatabaseNotFoundError(
             f"No Tostr database found at {db_path}. Run 'tostr parse' first."
@@ -77,8 +77,9 @@ def export_lockfile(target_path: Path, with_vectors: bool = False) -> dict:
     zero recompute at the cost of a larger, merge-noisy file. Returns {path, entries_written,
     changed}."""
     _verify_db_exists(target_path)
-    registry = Registry(project_path=target_path)
-    cache = StructCache(ProjectPaths(target_path), struct_store=registry)
+    paths = ProjectPaths(target_path)
+    registry = Registry(paths)
+    cache = StructCache(paths, struct_store=registry)
 
     entries = cache.collect_descriptions(with_vectors=with_vectors)
     changed = lockfile.write(target_path, entries)
@@ -86,7 +87,8 @@ def export_lockfile(target_path: Path, with_vectors: bool = False) -> dict:
     return {"path": str(lockfile.path_for(target_path)), "entries_written": len(entries), "changed": changed}
 
 def get_status(target_path: Path) -> dict:
-    db_path = target_path / ".tostr" / "cache.db"
+    paths = ProjectPaths(target_path)
+    db_path = paths.db_path
     status = {
         "project_path": str(target_path.absolute()),
         "db_exists": db_path.exists(),
@@ -97,7 +99,7 @@ def get_status(target_path: Path) -> dict:
     }
 
     if status["db_exists"]:
-        db = SqliteClient(ProjectPaths(target_path))
+        db = SqliteClient(paths)
         counts = db.struct_type_counts()
         counts["edges"] = db.edge_count()
         status["counts"] = counts
@@ -108,7 +110,7 @@ async def _build_ast_async(target_path: Path, config: ProjectConfig, use_cache: 
     llm = None if no_llm else get_llm_client(config, progress_tracker=progress_tracker)
     embedder = get_cached_embedding_client(progress_tracker=progress_tracker)
     paths = ProjectPaths(target_path)
-    registry = Registry(project_path=target_path, progress_tracker=progress_tracker, config=config)
+    registry = Registry(paths, progress_tracker=progress_tracker, config=config)
     cache = StructCache(paths, struct_store=registry, use_cache=use_cache)
     logger.info("Building AST...")
 
@@ -215,12 +217,12 @@ async def parse_async(target_path: Path, use_cache: bool = True, language: str |
     ("gemini"/"ollama"/"none"; None = use tostr.toml [llm].strategy, default "gemini"). CLI flags
     override config for this invocation only.
     """
-    tostr_dir = target_path / ".tostr"
-    tostr_dir.mkdir(exist_ok=True)
+    paths = ProjectPaths(target_path)
+    paths.cache_path.mkdir(exist_ok=True)
 
     # If an existing cache is from an incompatible format, wipe it so we rebuild fresh and re-stamp
     # the current version — otherwise INSERT OR REPLACE would leave a mixed-format graph behind.
-    db_path = tostr_dir / "cache.db"
+    db_path = paths.db_path
     if db_path.exists() and incompatibility_reason(read_db_version(db_path)):
         logger.warning("Existing cache is an incompatible format; wiping it for a clean rebuild.")
         for p in (db_path, db_path.with_name("cache.db-wal"), db_path.with_name("cache.db-shm")):
@@ -250,9 +252,10 @@ def resolve_uid_to_id(uid: str, project_path: Path) -> str:
     
 async def inspect_async(struct_ids: list[str], project_path: Path, include_body: bool = False):
     _verify_db_exists(project_path)
-    
-    registry = Registry(project_path=project_path)
-    cache = StructCache(ProjectPaths(project_path), struct_store=registry)
+
+    paths = ProjectPaths(project_path)
+    registry = Registry(paths)
+    cache = StructCache(paths, struct_store=registry)
 
     results = []
     for struct_id in struct_ids:
@@ -273,9 +276,10 @@ async def inspect_async(struct_ids: list[str], project_path: Path, include_body:
 
 async def skeleton_async(subpath: str, project_path: Path, depth: int = 7, files_only: bool = False):
     _verify_db_exists(project_path)
-    
-    registry = Registry(project_path=project_path)
-    cache = StructCache(ProjectPaths(project_path), struct_store=registry)
+
+    paths = ProjectPaths(project_path)
+    registry = Registry(paths)
+    cache = StructCache(paths, struct_store=registry)
 
     subpath = Path(project_path / subpath)
     logger.debug(f"Loading subtree for path: {subpath}")
@@ -385,9 +389,10 @@ async def process_file_deletion(project_dir: Path, filepath: Path, write_lock: "
     builders store it; `delete_path_subtree` cascades for directories via a path-prefix match."""
     logger.info(f"Processing deletion {filepath}")
     try:
-        registry = Registry(project_path=project_dir)
-        cache = StructCache(ProjectPaths(project_dir), struct_store=registry)
-        rel_path = str(registry.relative_to_project(Path(filepath)))
+        paths = ProjectPaths(project_dir)
+        registry = Registry(paths)
+        cache = StructCache(paths, struct_store=registry)
+        rel_path = str(paths.relative_to_project(Path(filepath)))
         removed = await _guarded_write(write_lock, filepath, cache.delete_path_subtree, rel_path)
         logger.debug(f"✅ Deleted {len(removed or [])} struct(s) for {rel_path}")
     except asyncio.CancelledError:
@@ -402,8 +407,9 @@ async def process_file_deletion(project_dir: Path, filepath: Path, write_lock: "
 async def process_single_file(project_dir: Path, filepath: Path, llm_client: LLMClient, write_lock: "asyncio.Lock | None" = None):
     logger.info(f"Processing file {filepath}")
     try:
-        registry = Registry(project_path=project_dir)
-        cache = StructCache(ProjectPaths(project_dir), struct_store=registry)
+        paths = ProjectPaths(project_dir)
+        registry = Registry(paths)
+        cache = StructCache(paths, struct_store=registry)
         embedder = get_cached_embedding_client()
         parser = BaseParser(filepath, llm=llm_client, embedder=embedder, registry=registry, cache=cache)
 
@@ -418,7 +424,7 @@ async def process_single_file(project_dir: Path, filepath: Path, llm_client: LLM
 
         # Scope the diff-prune to exactly this file's relative path so removed/renamed members are
         # purged. Matches what the builders store (BaseFileBuilder.from_path relativizes the path).
-        prune_paths = [str(registry.relative_to_project(Path(filepath)))]
+        prune_paths = [str(paths.relative_to_project(Path(filepath)))]
 
         # Reuse cached descriptions/vectors for members whose body is unchanged, so the describe +
         # embed pass below only regenerates what actually changed (must run before both writes so

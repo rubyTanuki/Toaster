@@ -58,7 +58,7 @@ class BaseParser(ABC):
             if parent is None:
                 root_path = subpath
                 if self.registry:
-                    root_path = self.registry.relative_to_project(subpath)
+                    root_path = self.registry.paths.relative_to_project(subpath)
                 root = Directory(path=root_path, registry=self.registry)
                 self.registry.root = root
                 self.registry.add_struct(root)
@@ -71,7 +71,7 @@ class BaseParser(ABC):
                     logger.debug(f"Skipping '{path}' due to path ignore rules")
                     continue
                 
-                relative_path = self.registry.relative_to_project(path)
+                relative_path = self.registry.paths.relative_to_project(path)
                 
                 if path.is_dir():
                     directory = Directory(path=relative_path, registry=self.registry, parent=root)

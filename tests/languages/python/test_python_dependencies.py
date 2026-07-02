@@ -2,6 +2,7 @@ from __future__ import annotations
 import pytest
 from pathlib import Path
 from tostr.core.registry import Registry
+from tostr.core.paths import ProjectPaths
 from tostr.languages.python.builders import PythonFileBuilder
 from tostr.core.models import BaseStruct
 
@@ -10,7 +11,7 @@ from tostr.core.models import BaseStruct
 def registry(tmp_path):
     (tmp_path / ".tostr").mkdir()
     (tmp_path / "tostr.toml").write_bytes(b'[project]\nlanguage = "python"\n')
-    return Registry(project_path=tmp_path)
+    return Registry(ProjectPaths(tmp_path))
 
 
 def build(registry, tmp_path, filename, code):

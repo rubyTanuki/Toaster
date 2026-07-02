@@ -1,12 +1,13 @@
 from __future__ import annotations
 import pytest
 from tostr.core.registry import Registry
+from tostr.core.paths import ProjectPaths
 from tostr.languages.java.builders import JavaFileBuilder
 from tostr.core.models import BaseStruct
 
 @pytest.fixture
 def registry(tmp_path):
-    return Registry(project_path=tmp_path)
+    return Registry(ProjectPaths(tmp_path))
 
 def test_java_dependency_parsing(tmp_path, registry):
     """Tests that JavaMethodBuilder correctly identifies method calls."""

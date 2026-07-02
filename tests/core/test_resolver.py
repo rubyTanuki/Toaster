@@ -2,11 +2,12 @@ from __future__ import annotations
 import pytest
 from pathlib import Path
 from tostr.core.registry import Registry
+from tostr.core.paths import ProjectPaths
 from tostr.core.models import BaseFile, BaseClass, BaseMethod, BaseField
 
 @pytest.fixture
 def registry(tmp_path):
-    return Registry(project_path=tmp_path)
+    return Registry(ProjectPaths(tmp_path))
 
 def test_agnostic_local_resolution(registry):
     """Tests that the resolver can find a local function in a file (no class)."""

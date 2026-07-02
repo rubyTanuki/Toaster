@@ -4,6 +4,7 @@ from pathlib import Path
 from unittest.mock import MagicMock
 
 from tostr.core.registry import Registry
+from tostr.core.paths import ProjectPaths
 from tostr.core.models import BaseFile
 from tostr.languages.python.builders import PythonFileBuilder
 
@@ -12,8 +13,7 @@ def mock_registry(tmp_path):
     registry = MagicMock(spec=Registry)
     registry.project_path = tmp_path
     registry.add_struct = MagicMock()
-    # Mock relative_to_project to return Path relative to tmp_path
-    registry.relative_to_project = lambda p: p.relative_to(tmp_path) if p.is_absolute() else p
+    registry.paths = ProjectPaths(tmp_path)
     return registry
 
 def test_python_file_builder_extracts_imports_and_children(tmp_path, mock_registry):

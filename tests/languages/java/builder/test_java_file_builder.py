@@ -4,13 +4,15 @@ from pathlib import Path
 from unittest.mock import MagicMock
 
 from tostr.core.registry import Registry
+from tostr.core.paths import ProjectPaths
 from tostr.languages.java.builders import JavaFileBuilder
 from tostr.core.models import BaseStruct
 
 @pytest.fixture
-def mock_registry():
+def mock_registry(tmp_path):
     registry = MagicMock(spec=Registry)
     registry.add_struct = MagicMock()
+    registry.paths = ProjectPaths(tmp_path)
     return registry
 
 @pytest.fixture

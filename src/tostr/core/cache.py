@@ -184,6 +184,11 @@ class StructCache:
     
     #region WRITE
 
+    def struct_exists(self, uid: str) -> bool:
+        if uid in self.struct_store.uid_map:
+            return True
+        return bool(self.db) and self.db.struct_exists(uid)
+
     def write_description(self, struct: BaseStruct):
         if not self.db:
             raise RuntimeError("SqLiteCache not provided.")
