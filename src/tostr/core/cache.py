@@ -117,8 +117,8 @@ class StructCache:
             cursor = conn.cursor()
             if uid != ".":
                 cursor.execute(
-                    "SELECT * FROM structs WHERE uid = ? OR uid LIKE ? OR uid LIKE ? OR path = ?", 
-                    (uid, f"{uid}.%", f"{uid}#%", uid)
+                    "SELECT * FROM structs WHERE uid = ? OR uid LIKE ? OR uid LIKE ? OR path = ? or uid LIKE ?", 
+                    (uid, f"{uid}.%", f"{uid}#%", uid, f"{uid}/%")
                 )
             else:
                 cursor.execute("SELECT * FROM structs")
@@ -183,15 +183,6 @@ class StructCache:
     #endregion
     
     #region WRITE
-
-    def struct_exists(self, uid: str) -> bool:
-        if uid in self.struct_store.uid_map:
-            return True
-        
-        if not self.db:
-            return False
-        with self.db.get_connection() as conn:
-            return conn.execute("SELECT 1 FROM structs WHERE uid = ? LIMIT 1", (uid,)).fetchone() is not None
 
     def write_description(self, struct: BaseStruct):
         if not self.db:
@@ -320,7 +311,7 @@ class StructCache:
 
     #endregion
 
-    #region RECONCILIATION (lockfile / carry-over)
+    #region RECONCILIATION
 
     def carry_over_unchanged(self, path_str: Optional[str] = None) -> int:
         """Reuse cached descriptions + vectors for any in-memory struct whose body is unchanged (its
