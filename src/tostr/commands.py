@@ -71,7 +71,7 @@ def clean_db(target_path: Path, purge: bool = False):
 def export_lockfile(target_path: Path, with_vectors: bool = False) -> dict:
     """Snapshot the cache's descriptions to `<project_root>/tostr.lock.json` for version control, so
     teammates on a cold clone can seed descriptions instead of re-calling the LLM. Orchestration
-    only: the Registry gathers the exportable entries from the cache (`collect_descriptions`) and the
+    only: the StructCache gathers the exportable entries from the cache (`collect_descriptions`) and the
     `lockfile` module owns the on-disk format (deterministic, version-stamped, no-op-aware write).
     Only descriptions are exported by default; `with_vectors=True` also exports vectors for literal
     zero recompute at the cost of a larger, merge-noisy file. Returns {path, entries_written,

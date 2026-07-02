@@ -56,10 +56,13 @@ handle, so each audience talks to its own object. This is why `Registry` carries
   `V-…` field); it is the opaque surrogate key handed to `inspect` and used for graph edges.
 * **Imports are normalized to UID *candidates*** at build time (the target AST may be incomplete, so
   a name emits e.g. `models.py#User` + `models.py#User(...)` and non-existent candidates are dropped
-  at resolution). Wildcards become a `scope.*` marker. Because absolute imports are namespaced from a
-  source root (e.g. `pkg.a`) while file UIDs are project-root-relative, candidates resolve by **path
-  suffix** (`Registry.resolve_import`): candidate `pkg/a.py#A` matches UID `src/pkg/a.py#A`. This
-  bridges src-layouts without the builder needing to know the source root.
+  at resolution). Wildcards become a `scope.*` marker.
+* **Absolute imports are anchored to the source root** at build time: the importing file's own
+  project-relative path locates the import's first segment (file `src/pkg/cmd.py` importing `pkg.a`
+  → prefix `src`), so candidates are the exact UID `src/pkg/a.py#A`. `Registry.resolve_import` then
+  resolves a candidate by: exact match → **path-suffix** match (cross-package / unanchored) →
+  **unique-name** fallback (package `__init__` re-exports, e.g. `from tostr.core import BaseParser`
+  where the class lives in `parser.py`). Ambiguous names are left unresolved rather than guessed.
 * **Dependency resolution is struct-graph traversal**, not string matching: look the candidate up in
   the store, else walk the enclosing scope / imported scope structs by name. There is no dotted
   logical-name translation layer.
