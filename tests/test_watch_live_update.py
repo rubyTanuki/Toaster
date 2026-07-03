@@ -16,7 +16,8 @@ import pytest
 
 import tostr.commands as commands
 from tostr.commands import parse_async, process_single_file, process_file_deletion, watch_async
-from tostr.core.db import SQLiteCache
+from tostr.core.db import SqliteClient
+from tostr.core.paths import ProjectPaths
 from tostr.exceptions import APIKeyError
 
 # Whole module is integration: it runs a real init (downloads/loads the embedding
@@ -82,8 +83,8 @@ async def test_process_single_file_updates_tree(no_llm, project):
 
 # --- Phase 2: diff-based cache sync (orphan purge + tree-attachment) -------------------------
 
-def _db(proj: Path) -> SQLiteCache:
-    return SQLiteCache(proj / ".tostr" / "cache.db")
+def _db(proj: Path) -> SqliteClient:
+    return SqliteClient(ProjectPaths(proj))
 
 
 def all_uids(proj: Path) -> list[str]:
@@ -298,3 +299,40 @@ async def test_watcher_live_updates_on_modification(no_llm, project):
             await asyncio.wait_for(watch_task, timeout=5)
         except asyncio.TimeoutError:
             watch_task.cancel()
+
+
+# --- Phase 3: cross-file dependency edges survive incremental reparses -----------------------
+
+def cross_file_edges(proj: Path, path_str: str) -> set[tuple]:
+    """Dependency edges (non-child) sourced from structs stored under `path_str` whose target
+    lives in a different file."""
+    with _db(proj).get_connection() as c:
+        rows = c.execute(
+            """
+            SELECT s.uid, t.uid, e.edge_type FROM edges e
+            JOIN structs s ON s.id = e.source_id
+            JOIN structs t ON t.id = e.target_id
+            WHERE s.path = ? AND t.path != s.path AND e.edge_type != 'is_child_of'
+            """,
+            (path_str,),
+        ).fetchall()
+    return {tuple(r) for r in rows}
+
+
+async def test_cross_file_edges_survive_reparse(no_llm, project):
+    """A single-file reparse resolves against the hydrated project graph, so dependency edges
+    into other files survive. Regression guard: the memory-only registry used to see just the
+    one file, fail every cross-file resolution, and delete-then-not-reinsert all such edges."""
+    await parse_async(project, no_llm=True)
+
+    before = cross_file_edges(project, "services/user_service.py")
+    assert before, "fixture should have cross-file dependency edges after a full parse"
+
+    # Simulate a save with unchanged content — the watcher reparses regardless.
+    svc = project / "services" / "user_service.py"
+    svc.write_text(svc.read_text())
+    await process_single_file(project, svc.resolve(), None)
+
+    after = cross_file_edges(project, "services/user_service.py")
+    assert before - after == set(), f"cross-file edges lost on reparse: {before - after}"
+    assert_graph_integrity(project)

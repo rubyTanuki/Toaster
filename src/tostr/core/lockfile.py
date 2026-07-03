@@ -8,7 +8,7 @@ file; everyone else's first `tostr parse` seeds descriptions from it instead of 
 Separation of concerns: this module owns only the *serialization format* (JSON shape, deterministic
 output, version stamp + compatibility gate, no-op write). It deals in plain `{uid: {...}}` entry
 dicts and paths — it never touches the database. Gathering the entries from the cache is the
-Registry's job (`Registry.collect_descriptions`); orchestrating the two is the command's job
+StructCache's job (`StructCache.collect_descriptions`); orchestrating the two is the command's job
 (`commands.export_lockfile`). Because it depends only on `cache_version`, both `registry` and
 `commands` can import it without an import cycle.
 """

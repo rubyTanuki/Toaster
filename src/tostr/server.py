@@ -10,7 +10,6 @@ import os
 from typing import Union, List
 
 from tostr.exceptions import TostrError
-from tostr.core.db import SQLiteCache
 from tostr.core.registry import Registry
 
 from tostr.commands import (

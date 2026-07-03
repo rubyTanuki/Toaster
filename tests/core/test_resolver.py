@@ -2,11 +2,12 @@ from __future__ import annotations
 import pytest
 from pathlib import Path
 from tostr.core.registry import Registry
+from tostr.core.paths import ProjectPaths
 from tostr.core.models import BaseFile, BaseClass, BaseMethod, BaseField
 
 @pytest.fixture
 def registry(tmp_path):
-    return Registry(project_path=tmp_path, use_cache=False)
+    return Registry(ProjectPaths(tmp_path))
 
 def test_agnostic_local_resolution(registry):
     """Tests that the resolver can find a local function in a file (no class)."""
@@ -65,10 +66,10 @@ def test_agnostic_receiver_heuristic(registry):
 def test_agnostic_import_resolution(registry):
     """Tests that the resolver respects normalized imports."""
     file_obj = BaseFile(uid="test.py", name="test.py", registry=registry)
-    # Normalized import: "other.Member"
-    file_obj.imports = ["other.Member"]
-    
-    other_member = BaseClass(uid="other.Member", name="Member", registry=registry)
+    # Normalized import candidate: path-format member UID.
+    file_obj.imports = ["other.py#Member"]
+
+    other_member = BaseClass(uid="other.py#Member", name="Member", registry=registry)
     registry.add_struct(other_member)
     
     # Code creating 'Member'

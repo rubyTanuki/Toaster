@@ -5,7 +5,8 @@ from pathlib import Path
 
 import pytest
 
-from tostr.core.db import SQLiteCache
+from tostr.core.db import SqliteClient
+from tostr.core.paths import ProjectPaths
 from tostr.core.cache_version import (
     CURRENT_CACHE_VERSION,
     incompatibility_reason,
@@ -35,7 +36,7 @@ def test_incompatibility_reason_logic():
 
 def test_fresh_db_is_stamped_current(tmp_path):
     db_path = tmp_path / ".tostr" / "cache.db"
-    SQLiteCache(db_path)  # creates schema + stamps version
+    SqliteClient(ProjectPaths(tmp_path))  # creates schema + stamps version
     assert read_db_version(db_path) == CURRENT_CACHE_VERSION
     assert is_compatible(db_path)
 
@@ -44,16 +45,16 @@ def test_existing_db_version_is_not_remasked(tmp_path):
     """Re-opening an existing (stale) cache must NOT silently re-stamp it to current — otherwise the
     compatibility check could never detect an old format."""
     db_path = tmp_path / ".tostr" / "cache.db"
-    SQLiteCache(db_path)
+    SqliteClient(ProjectPaths(tmp_path))
     _set_version(db_path, 0)  # simulate a pre-versioned cache
-    SQLiteCache(db_path)  # second open
+    SqliteClient(ProjectPaths(tmp_path))  # second open
     assert read_db_version(db_path) == 0
     assert not is_compatible(db_path)
 
 
 def test_verify_db_exists_rejects_incompatible_cache(tmp_path):
     db_path = tmp_path / ".tostr" / "cache.db"
-    SQLiteCache(db_path)
+    SqliteClient(ProjectPaths(tmp_path))
     _set_version(db_path, 0)
     with pytest.raises(CacheFormatError):
         _verify_db_exists(tmp_path)
@@ -61,7 +62,7 @@ def test_verify_db_exists_rejects_incompatible_cache(tmp_path):
 
 def test_verify_db_exists_accepts_current_cache(tmp_path):
     db_path = tmp_path / ".tostr" / "cache.db"
-    SQLiteCache(db_path)
+    SqliteClient(ProjectPaths(tmp_path))
     _verify_db_exists(tmp_path)  # should not raise
 
 

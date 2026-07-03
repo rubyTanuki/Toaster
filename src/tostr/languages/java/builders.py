@@ -57,6 +57,19 @@ def _normalize_java_param_type(raw: str) -> str:
         t = t[:-2].strip()
     return _strip_java_package(t) + arr
 
+def _java_import_candidates(fqn: str, is_wildcard: bool) -> list[str]:
+    """Normalize a Java import FQN to path-format UID candidates. A wildcard package import
+    `com.example.*` -> the package-directory scope marker `com/example.*`; a type import
+    `com.example.User` -> the file member UID `com/example/User.java#User`."""
+    parts = fqn.split(".")
+    if is_wildcard:
+        return [f"{'/'.join(parts)}.*"]
+    class_name = parts[-1]
+    pkg_path = "/".join(parts[:-1])
+    file_uid = f"{pkg_path}/{class_name}.java" if pkg_path else f"{class_name}.java"
+    return [f"{file_uid}#{class_name}"]
+
+
 class JavaBuilder(BaseBuilder):
     def build_file(self) -> JavaFileBuilder:
         return JavaFileBuilder(self.registry)
@@ -94,17 +107,17 @@ class JavaFileBuilder(BaseFileBuilder):
             if child.type == "package_declaration":
                 for grandchild in child.children:
                     if grandchild.type in {"scoped_identifier", "identifier"}:
-                        file_obj.package = grandchild.text.decode('utf-8')
+                        # Store the package in normalized path form (com.example -> com/example);
+                        # it is display metadata only — resolution keys off the file's own path.
+                        file_obj.package = grandchild.text.decode('utf-8').replace(".", "/")
                         break
-                    
+
             if child.type == "import_declaration":
                 is_wildcard = any(gc.type == "asterisk" for gc in child.children)
                 for grandchild in child.children:
                     if grandchild.type in {"scoped_identifier", "identifier"}:
-                        imp_name = grandchild.text.decode('utf-8')
-                        if is_wildcard:
-                            imp_name += ".*"
-                        imports.append(imp_name)
+                        fqn = grandchild.text.decode('utf-8')
+                        imports.extend(_java_import_candidates(fqn, is_wildcard))
                         
             child_instance = None
             if child.type == "class_declaration" or child.type == "interface_declaration":

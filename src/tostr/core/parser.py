@@ -1,6 +1,7 @@
 from __future__ import annotations
 from pathlib import Path
 from abc import ABC
+from typing import TYPE_CHECKING
 import asyncio
 import hashlib
 from loguru import logger
@@ -10,12 +11,17 @@ from tostr.core.registry import Registry
 from tostr.core.providers import LanguageProvider
 from tostr.core.describer import LLMDescriber, NoLLMDescriber
 
+if TYPE_CHECKING:
+    from tostr.core.cache import StructCache
+
 class BaseParser(ABC):
-    def __init__(self, project_dir: str, llm=None, embedder=None, registry: Registry=None):
+    def __init__(self, project_dir: str, llm=None, embedder=None, registry: Registry=None, cache: "StructCache"=None):
         self.project_dir = project_dir
         self.llm = llm
         self.embedder = embedder
         self.registry = registry
+        # Persistence half of the old registry: hydration, write-back, lockfile/carry-over.
+        self.cache = cache
     
     @property
     def files(self):
@@ -36,8 +42,8 @@ class BaseParser(ABC):
         # Reuse descriptions/vectors from the prior cache for structs whose body is unchanged, so a
         # full reparse only regenerates what actually changed instead of re-describing the whole
         # project. Skipped under --no-cache (use_cache=False), which forces a from-scratch rebuild.
-        if self.registry.use_cache:
-            self.registry.carry_over_unchanged()
+        if self.cache and self.cache.use_cache:
+            self.cache.carry_over_unchanged()
 
         await self.resolve_descriptions_async()
         
@@ -52,7 +58,7 @@ class BaseParser(ABC):
             if parent is None:
                 root_path = subpath
                 if self.registry:
-                    root_path = self.registry.relative_to_project(subpath)
+                    root_path = self.registry.paths.relative_to_project(subpath)
                 root = Directory(path=root_path, registry=self.registry)
                 self.registry.root = root
                 self.registry.add_struct(root)
@@ -65,7 +71,7 @@ class BaseParser(ABC):
                     logger.debug(f"Skipping '{path}' due to path ignore rules")
                     continue
                 
-                relative_path = self.registry.relative_to_project(path)
+                relative_path = self.registry.paths.relative_to_project(path)
                 
                 if path.is_dir():
                     directory = Directory(path=relative_path, registry=self.registry, parent=root)
@@ -102,7 +108,7 @@ class BaseParser(ABC):
             dir_uid = str(parent_path)
             directory = Directory(path=parent_path, registry=self.registry, uid=dir_uid)
             child.set_parent(directory)
-            if self.registry.struct_exists(dir_uid):
+            if self.cache and self.cache.struct_exists(dir_uid):
                 break  # existing dir: stub only provides the edge target id; don't persist/overwrite
             # New directory: persist it, then keep walking so its own parent edge is created too.
             self.registry.add_struct(directory)
@@ -128,9 +134,6 @@ class BaseParser(ABC):
             logger.info(f"Starting dependency resolution from root: {self.registry.root}")
             self.registry.root.resolve_dependencies()
     
-    def load_cache(self):
-        self.registry.load_cache()
-                    
     async def resolve_descriptions_async(self):
         self.embedder.start()
         if self.registry.root:
@@ -141,7 +144,7 @@ class BaseParser(ABC):
                 # Load the committed lockfile once and hand it to the describer as the second
                 # description source (after the live cache, before the LLM) — see apply order in
                 # parse(): carry_over_unchanged runs first, then this fills the rest on a cold clone.
-                describer = LLMDescriber(self.llm, self.embedder, lockfile=self.registry.load_lockfile_lookup())
+                describer = LLMDescriber(self.llm, self.embedder, lockfile=self.cache.load_lockfile_lookup() if self.cache else {})
             await describer.describe(self.registry.root)
 
         await self.embedder.drain_and_stop()

@@ -2,6 +2,7 @@ from __future__ import annotations
 import pytest
 from pathlib import Path
 from tostr.core.registry import Registry
+from tostr.core.paths import ProjectPaths
 from tostr.languages.python.builders import PythonFileBuilder
 from tostr.core.models import BaseStruct
 
@@ -10,7 +11,7 @@ from tostr.core.models import BaseStruct
 def registry(tmp_path):
     (tmp_path / ".tostr").mkdir()
     (tmp_path / "tostr.toml").write_bytes(b'[project]\nlanguage = "python"\n')
-    return Registry(project_path=tmp_path, use_cache=False)
+    return Registry(ProjectPaths(tmp_path))
 
 
 def build(registry, tmp_path, filename, code):
@@ -37,29 +38,31 @@ def resolve_all(registry):
 def test_simple_import(tmp_path, registry):
     code = "import os\nimport os.path\n"
     f = build(registry, tmp_path, "a.py", code)
-    assert "os" in f.imports
-    assert "os.path" in f.imports
+    # Module imports normalize to file-scope UID candidates.
+    assert "os.py" in f.imports
+    assert "os/path.py" in f.imports
 
 
 def test_aliased_module_import_stores_original(tmp_path, registry):
     code = "import collections as col\n"
     f = build(registry, tmp_path, "a.py", code)
-    assert "collections" in f.imports
-    assert "collections as col" not in f.imports
+    assert "collections.py" in f.imports
     assert not any("as" in imp for imp in f.imports)
+    assert not any(" " in imp for imp in f.imports)
 
 
 def test_aliased_named_import_stores_original_uid(tmp_path, registry):
     code = "from pathlib import Path as P\n"
     f = build(registry, tmp_path, "a.py", code)
-    assert "pathlib.Path" in f.imports
-    assert "pathlib.P" not in f.imports
+    # The alias is dropped; the import normalizes to the real symbol's UID candidate.
+    assert "pathlib.py#Path" in f.imports
+    assert not any("#P" in imp and "#Path" not in imp for imp in f.imports)
 
 
 def test_wildcard_import(tmp_path, registry):
     code = "from math import *\n"
     f = build(registry, tmp_path, "a.py", code)
-    assert "math.*" in f.imports
+    assert "math.py.*" in f.imports
 
 
 # ---------------------------------------------------------------------------
@@ -162,7 +165,7 @@ class UserService:
     resolve_all(registry)
 
     create = [x for x in registry.methods if x.name == "create"][0]
-    user_class = registry.get_struct_by_uid("models.User")
+    user_class = registry.get_struct_by_uid("models.py#User")
     assert user_class in create.outbound_dependencies
 
 
@@ -233,7 +236,7 @@ class Service:
     resolve_all(registry)
 
     run = [x for x in registry.methods if x.name == "run"][0]
-    user_class = registry.get_struct_by_uid("models.User")
+    user_class = registry.get_struct_by_uid("models.py#User")
     assert user_class in run.outbound_dependencies
 
 
@@ -315,8 +318,8 @@ class Dog(Animal):
     build(registry, tmp_path, "animals.py", code)
     resolve_all(registry)
 
-    dog = registry.get_struct_by_uid("animals.Dog")
-    animal = registry.get_struct_by_uid("animals.Animal")
+    dog = registry.get_struct_by_uid("animals.py#Dog")
+    animal = registry.get_struct_by_uid("animals.py#Animal")
     assert animal in dog.outbound_dependencies
 
 
@@ -339,8 +342,81 @@ def test_relative_import_resolution(tmp_path, registry):
     resolve_all(registry)
 
     run = [x for x in registry.methods if x.name == "run"][0]
-    item_class = registry.get_struct_by_uid("pkg.models.Item")
+    item_class = registry.get_struct_by_uid("pkg/models.py#Item")
     assert item_class in run.outbound_dependencies
+
+
+# ---------------------------------------------------------------------------
+# Source-root anchoring of absolute imports
+# ---------------------------------------------------------------------------
+
+def build_at(registry, tmp_path, relpath, code):
+    p = tmp_path / relpath
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(code)
+    file_obj = PythonFileBuilder(registry).from_path(p)
+    registry.add_struct(file_obj)
+    return file_obj
+
+
+def test_src_layout_absolute_import_resolves(tmp_path, registry):
+    """`src/pkg/cmd.py` importing `pkg.a` anchors to the shared source root `src/`."""
+    build_at(registry, tmp_path, "src/pkg/a.py", "class A:\n    pass\n")
+    build_at(registry, tmp_path, "src/pkg/cmd.py",
+             "from pkg.a import A\n\nclass Cmd:\n    def run(self):\n        return A()\n")
+    resolve_all(registry)
+
+    run = [x for x in registry.methods if x.name == "run"][0]
+    a_class = registry.get_struct_by_uid("src/pkg/a.py#A")
+    assert a_class in run.outbound_dependencies
+
+
+def test_shadowed_anchor_falls_back_to_suffix_match(tmp_path, registry):
+    """A directory in the importer's own path that shares the import's first segment must not
+    hijack the anchor: `docs/pkg/example.py` importing `pkg.a` still resolves to `src/pkg/a.py`
+    via the unanchored candidate's suffix match."""
+    build_at(registry, tmp_path, "src/pkg/a.py", "class A:\n    pass\n")
+    build_at(registry, tmp_path, "docs/pkg/example.py",
+             "from pkg.a import A\n\nclass Example:\n    def run(self):\n        return A()\n")
+    resolve_all(registry)
+
+    run = [x for x in registry.methods if x.name == "run"][0]
+    a_class = registry.get_struct_by_uid("src/pkg/a.py#A")
+    assert a_class in run.outbound_dependencies
+
+
+# ---------------------------------------------------------------------------
+# Re-export fallback gating
+# ---------------------------------------------------------------------------
+
+def test_package_reexport_resolves_to_definition(tmp_path, registry):
+    """`from pkg import Widget` where Widget lives in pkg/impl.py and is re-exported by
+    pkg/__init__.py resolves through the unique-name fallback."""
+    build_at(registry, tmp_path, "pkg/impl.py", "class Widget:\n    pass\n")
+    build_at(registry, tmp_path, "pkg/__init__.py", "from pkg.impl import Widget\n")
+    build_at(registry, tmp_path, "main.py",
+             "from pkg import Widget\n\nclass App:\n    def run(self):\n        return Widget()\n")
+    resolve_all(registry)
+
+    run = [x for x in registry.methods if x.name == "run"][0]
+    widget = registry.get_struct_by_uid("pkg/impl.py#Widget")
+    assert widget in run.outbound_dependencies
+
+
+def test_external_import_does_not_false_match_project_struct(tmp_path, registry):
+    """`from loguru import logger` must not resolve to a same-named project struct: the
+    unique-name fallback only fires when the import's module is itself a project file."""
+    build_at(registry, tmp_path, "util.py", "def logger():\n    pass\n")
+    build_at(registry, tmp_path, "main.py",
+             "from loguru import logger\n\nclass App:\n    def run(self):\n        pass\n")
+    resolve_all(registry)
+
+    logger_fn = registry.get_struct_by_uid("util.py#logger(...)")
+    app = registry.get_struct_by_uid("main.py#App")
+    main_file = registry.get_struct_by_uid("main.py")
+    assert logger_fn is not None
+    assert logger_fn not in app.outbound_dependencies
+    assert logger_fn not in main_file.outbound_dependencies
 
 
 # ---------------------------------------------------------------------------
@@ -365,7 +441,7 @@ class Bar:
     resolve_all(registry)
 
     run = [x for x in registry.methods if x.name == "run"][0]
-    foo = registry.get_struct_by_uid("models.Foo")
+    foo = registry.get_struct_by_uid("models.py#Foo")
     # Wildcard matches land in outbound_dependencies (if unambiguous) or fuzzy
     all_deps = run.outbound_dependencies | run.outbound_dependencies_fuzzy
     assert foo in all_deps

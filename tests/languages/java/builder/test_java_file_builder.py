@@ -4,13 +4,15 @@ from pathlib import Path
 from unittest.mock import MagicMock
 
 from tostr.core.registry import Registry
+from tostr.core.paths import ProjectPaths
 from tostr.languages.java.builders import JavaFileBuilder
 from tostr.core.models import BaseStruct
 
 @pytest.fixture
-def mock_registry():
+def mock_registry(tmp_path):
     registry = MagicMock(spec=Registry)
     registry.add_struct = MagicMock()
+    registry.paths = ProjectPaths(tmp_path)
     return registry
 
 @pytest.fixture
@@ -39,9 +41,9 @@ def test_java_file_builder_parses_structure(java_test_file, mock_registry):
     
     file_obj = builder.from_path(java_test_file)
     
-    assert file_obj.package == "com.tostr.test"
-    assert "java.util.List" in file_obj.imports
-    assert "java.util.ArrayList" in file_obj.imports
+    assert file_obj.package == "com/tostr/test"
+    assert "java/util/List.java#List" in file_obj.imports
+    assert "java/util/ArrayList.java#ArrayList" in file_obj.imports
     assert file_obj.body.strip().startswith("package com.tostr.test;")
     
     assert mock_registry.add_struct.call_count == 3
