@@ -59,10 +59,14 @@ handle, so each audience talks to its own object. This is why `Registry` carries
   at resolution). Wildcards become a `scope.*` marker.
 * **Absolute imports are anchored to the source root** at build time: the importing file's own
   project-relative path locates the import's first segment (file `src/pkg/cmd.py` importing `pkg.a`
-  → prefix `src`), so candidates are the exact UID `src/pkg/a.py#A`. `Registry.resolve_import` then
-  resolves a candidate by: exact match → **path-suffix** match (cross-package / unanchored) →
-  **unique-name** fallback (package `__init__` re-exports, e.g. `from tostr.core import BaseParser`
-  where the class lives in `parser.py`). Ambiguous names are left unresolved rather than guessed.
+  → prefix `src`), yielding the exact UID `src/pkg/a.py#A`. The anchor is a heuristic (the first
+  segment may merely shadow a directory in the importer's own path), so anchored candidates are
+  emitted *alongside* the unanchored forms. `Registry.resolve_import` then resolves a candidate by:
+  exact match → **path-suffix** match (cross-package / unanchored) → **unique-name** fallback for
+  package `__init__` re-exports (e.g. `from tostr.core import BaseParser` where the class lives in
+  `parser.py`), gated on the candidate's module being a real project file so external imports
+  (`from loguru import logger`) can't false-match. Ambiguous names are left unresolved rather than
+  guessed.
 * **Dependency resolution is struct-graph traversal**, not string matching: look the candidate up in
   the store, else walk the enclosing scope / imported scope structs by name. There is no dotted
   logical-name translation layer.
