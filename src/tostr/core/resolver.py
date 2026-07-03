@@ -279,6 +279,11 @@ class BaseDependencyResolver:
             if t:
                 parents.append(t.uid)
 
+        # Dedupe (order-preserving): anchored + unanchored candidates for the same import
+        # resolve to the same scope, and a doubled parent would double its method hits —
+        # tripping the single-candidate check into the fuzzy path.
+        parents = list(dict.fromkeys(parents))
+
         if hasattr(parent, "_potential_parents_cache"):
             parent._potential_parents_cache = parents
         return parents

@@ -347,6 +347,79 @@ def test_relative_import_resolution(tmp_path, registry):
 
 
 # ---------------------------------------------------------------------------
+# Source-root anchoring of absolute imports
+# ---------------------------------------------------------------------------
+
+def build_at(registry, tmp_path, relpath, code):
+    p = tmp_path / relpath
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(code)
+    file_obj = PythonFileBuilder(registry).from_path(p)
+    registry.add_struct(file_obj)
+    return file_obj
+
+
+def test_src_layout_absolute_import_resolves(tmp_path, registry):
+    """`src/pkg/cmd.py` importing `pkg.a` anchors to the shared source root `src/`."""
+    build_at(registry, tmp_path, "src/pkg/a.py", "class A:\n    pass\n")
+    build_at(registry, tmp_path, "src/pkg/cmd.py",
+             "from pkg.a import A\n\nclass Cmd:\n    def run(self):\n        return A()\n")
+    resolve_all(registry)
+
+    run = [x for x in registry.methods if x.name == "run"][0]
+    a_class = registry.get_struct_by_uid("src/pkg/a.py#A")
+    assert a_class in run.outbound_dependencies
+
+
+def test_shadowed_anchor_falls_back_to_suffix_match(tmp_path, registry):
+    """A directory in the importer's own path that shares the import's first segment must not
+    hijack the anchor: `docs/pkg/example.py` importing `pkg.a` still resolves to `src/pkg/a.py`
+    via the unanchored candidate's suffix match."""
+    build_at(registry, tmp_path, "src/pkg/a.py", "class A:\n    pass\n")
+    build_at(registry, tmp_path, "docs/pkg/example.py",
+             "from pkg.a import A\n\nclass Example:\n    def run(self):\n        return A()\n")
+    resolve_all(registry)
+
+    run = [x for x in registry.methods if x.name == "run"][0]
+    a_class = registry.get_struct_by_uid("src/pkg/a.py#A")
+    assert a_class in run.outbound_dependencies
+
+
+# ---------------------------------------------------------------------------
+# Re-export fallback gating
+# ---------------------------------------------------------------------------
+
+def test_package_reexport_resolves_to_definition(tmp_path, registry):
+    """`from pkg import Widget` where Widget lives in pkg/impl.py and is re-exported by
+    pkg/__init__.py resolves through the unique-name fallback."""
+    build_at(registry, tmp_path, "pkg/impl.py", "class Widget:\n    pass\n")
+    build_at(registry, tmp_path, "pkg/__init__.py", "from pkg.impl import Widget\n")
+    build_at(registry, tmp_path, "main.py",
+             "from pkg import Widget\n\nclass App:\n    def run(self):\n        return Widget()\n")
+    resolve_all(registry)
+
+    run = [x for x in registry.methods if x.name == "run"][0]
+    widget = registry.get_struct_by_uid("pkg/impl.py#Widget")
+    assert widget in run.outbound_dependencies
+
+
+def test_external_import_does_not_false_match_project_struct(tmp_path, registry):
+    """`from loguru import logger` must not resolve to a same-named project struct: the
+    unique-name fallback only fires when the import's module is itself a project file."""
+    build_at(registry, tmp_path, "util.py", "def logger():\n    pass\n")
+    build_at(registry, tmp_path, "main.py",
+             "from loguru import logger\n\nclass App:\n    def run(self):\n        pass\n")
+    resolve_all(registry)
+
+    logger_fn = registry.get_struct_by_uid("util.py#logger(...)")
+    app = registry.get_struct_by_uid("main.py#App")
+    main_file = registry.get_struct_by_uid("main.py")
+    assert logger_fn is not None
+    assert logger_fn not in app.outbound_dependencies
+    assert logger_fn not in main_file.outbound_dependencies
+
+
+# ---------------------------------------------------------------------------
 # Wildcard import
 # ---------------------------------------------------------------------------
 

@@ -11,18 +11,39 @@ from tostr.languages.python.queries import DEPENDENCY_QUERY
 from tostr.core.models import *
 
 
-def _module_scope_candidates(module_dotted: str) -> list[str]:
+def _anchor_prefix(dir_parts: tuple, module_dotted: str) -> str:
+    """Source-root prefix for an absolute import, inferred from the importing file's own
+    project-relative directory. Absolute imports are namespaced from a source root (e.g.
+    `pkg.a`) while file UIDs are project-root-relative, so a file at `src/pkg/cmd.py` importing
+    `pkg.a` sits under `src/` — we locate the import's first segment (`pkg`) in the file's dir
+    parts and take everything before it as the prefix (`src`). Returns "" when the segment isn't
+    in the path (cross-package / external import — the resolver's suffix/name fallbacks cover it)."""
+    first = module_dotted.split(".", 1)[0]
+    for i, seg in enumerate(dir_parts):
+        if seg == first:
+            return "/".join(dir_parts[:i])
+    return ""
+
+
+def _module_scope_candidates(module_dotted: str, anchor: str = "") -> list[str]:
     """Normalized file-UID candidates for a dotted module path — the module as a file and
-    as a package __init__. Non-existent candidates are pruned at resolution time."""
+    as a package __init__. When a source-root `anchor` was inferred, the anchored forms are
+    emitted *in addition to* the unanchored ones: the anchor is a heuristic (the import's
+    first segment may merely shadow a directory in the importing file's own path), and an
+    anchored-only wrong guess would defeat the resolver's path-suffix fallback. Non-existent
+    candidates are pruned at resolution time."""
     base = module_dotted.replace(".", "/")
-    return [f"{base}.py", f"{base}/__init__.py"]
+    out = [f"{base}.py", f"{base}/__init__.py"]
+    if anchor:
+        out = [f"{anchor}/{base}.py", f"{anchor}/{base}/__init__.py"] + out
+    return out
 
 
-def _member_candidates(module_dotted: str, member: str) -> list[str]:
+def _member_candidates(module_dotted: str, member: str, anchor: str = "") -> list[str]:
     """UID candidates for `member` imported from `module_dotted`: the class/field form
     (`mod.py#member`) and the callable form (`mod.py#member(...)`)."""
     out = []
-    for mod in _module_scope_candidates(module_dotted):
+    for mod in _module_scope_candidates(module_dotted, anchor):
         out.append(f"{mod}#{member}")
         out.append(f"{mod}#{member}(...)")
     return out
@@ -53,12 +74,12 @@ class PythonFileBuilder(BaseFileBuilder):
         file_obj.node = tree.root_node
         file_obj.start_line, file_obj.end_line = line_bounds(tree.root_node)
 
-        # UID stays the relative filepath (set by BaseFileBuilder.from_path) so all
-        # children are prefix-matchable. The dotted module path is the *logical* name,
-        # stored on `package` and resolved through Registry's logical-name lookup.
-        rel_path = self.registry.relative_to_project(path)
+        rel_path = self.registry.paths.relative_to_project(path)
         module_path = ".".join(rel_path.with_suffix("").parts).replace("/", ".").replace("\\", ".")
         file_obj.package = module_path
+        # The importing file's project-relative directory, used to anchor absolute imports to
+        # their source-root prefix (see _anchor_prefix).
+        dir_parts = rel_path.parts[:-1]
 
         # Phase 1: Parse imports first to build alias_map before children are parsed.
         # alias_map: {alias_name -> original_uid} used to normalize call-site names.
@@ -72,12 +93,13 @@ class PythonFileBuilder(BaseFileBuilder):
                         alias_node = name_child.child_by_field_name("alias")
                         if original_node:
                             original = original_node.text.decode('utf-8')
-                            imports.extend(_module_scope_candidates(original))
+                            imports.extend(_module_scope_candidates(original, _anchor_prefix(dir_parts, original)))
                             if alias_node:
                                 # Alias binds the module's top-level name; receivers resolve via it.
                                 alias_map[alias_node.text.decode('utf-8')] = original.split('.')[0]
                     else:
-                        imports.extend(_module_scope_candidates(name_child.text.decode('utf-8')))
+                        mod = name_child.text.decode('utf-8')
+                        imports.extend(_module_scope_candidates(mod, _anchor_prefix(dir_parts, mod)))
 
             elif child.type == "import_from_statement":
                 module_name = ""
@@ -112,9 +134,10 @@ class PythonFileBuilder(BaseFileBuilder):
                         module_name = dotted_part
 
                 if module_name:
+                    anchor = _anchor_prefix(dir_parts, module_name)
                     has_wildcard = any(gc.type == "wildcard_import" for gc in child.children)
                     if has_wildcard:
-                        imports.extend(f"{mod}.*" for mod in _module_scope_candidates(module_name))
+                        imports.extend(f"{mod}.*" for mod in _module_scope_candidates(module_name, anchor))
                     else:
                         for gc in child.named_children:
                             if gc.type in {"aliased_import", "dotted_name", "identifier"}:
@@ -124,12 +147,12 @@ class PythonFileBuilder(BaseFileBuilder):
                                     name_node = gc.child_by_field_name("name") or gc
                                     alias_node = gc.child_by_field_name("alias")
                                     imp_name = name_node.text.decode('utf-8')
-                                    imports.extend(_member_candidates(module_name, imp_name))
+                                    imports.extend(_member_candidates(module_name, imp_name, anchor))
                                     if alias_node:
                                         # Alias binds the imported symbol; refs normalize to its real name.
                                         alias_map[alias_node.text.decode('utf-8')] = imp_name
                                 else:
-                                    imports.extend(_member_candidates(module_name, gc.text.decode('utf-8')))
+                                    imports.extend(_member_candidates(module_name, gc.text.decode('utf-8'), anchor))
 
         file_obj.imports = list(set(imports))
 
