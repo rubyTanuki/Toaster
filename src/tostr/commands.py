@@ -284,7 +284,8 @@ async def skeleton_async(subpath: str, project_path: Path, depth: int = 7, files
     subpath = Path(project_path / subpath)
     logger.debug(f"Loading subtree for path: {subpath}")
 
-    cache.load_filepath(subpath)
+    # Slim: dump_skeleton renders only ids/uids/types — bodies and descriptions would be dead weight.
+    cache.load_filepath(subpath, slim=True)
     if not registry.files:
         raise FileNotFoundError(f"No files found matching path '{subpath}'.")
     
@@ -413,18 +414,36 @@ async def process_single_file(project_dir: Path, filepath: Path, llm_client: LLM
         embedder = get_cached_embedding_client()
         parser = BaseParser(filepath, llm=llm_client, embedder=embedder, registry=registry, cache=cache)
 
-        parser.parse_path(filepath)
+        # Relative path matching what the builders store (BaseFileBuilder.from_path relativizes).
+        rel_path = str(paths.relative_to_project(Path(filepath)))
 
-        # Nothing parsed (unsupported/ignored file) — don't prune, or we'd wipe the path's structs.
-        if registry.root is None:
+        def _hydrate_parse_resolve() -> bool:
+            # Hydrate the prior project graph so the single-file reparse can resolve cross-file
+            # imports/inheritance — resolve_import needs project-wide uid visibility. Hydrated
+            # structs are read-only context (save_to_cache persists only parsed structs, so their
+            # rows/edges are never rewritten), so slim hydration skips their bodies/descriptions.
+            # Evict this file's own hydrated structs so members deleted by the edit can't linger
+            # and win resolution against the fresh parse.
+            cache.load_filepath(project_dir, slim=True)
+            registry.evict_hydrated_path(rel_path)
+
+            parser.parse_path(filepath)
+            if not registry.parsed_uid_map:
+                return False
+            parser.resolve_dependencies()
+            return True
+
+        # Off-loop: hydration + parse + resolution are pure CPU/IO that would otherwise stall the
+        # watcher's event loop (and every other in-flight task) for the duration on large projects.
+        # Safe because this task's registry/cache are private and connections are per-call.
+        if not await asyncio.to_thread(_hydrate_parse_resolve):
+            # Nothing parsed (unsupported/ignored file) — don't prune, or we'd wipe the path's structs.
             logger.debug(f"No parseable struct produced for {filepath}; skipping cache write")
             return
 
-        parser.resolve_dependencies()
-
         # Scope the diff-prune to exactly this file's relative path so removed/renamed members are
-        # purged. Matches what the builders store (BaseFileBuilder.from_path relativizes the path).
-        prune_paths = [str(paths.relative_to_project(Path(filepath)))]
+        # purged.
+        prune_paths = [rel_path]
 
         # Reuse cached descriptions/vectors for members whose body is unchanged, so the describe +
         # embed pass below only regenerates what actually changed (must run before both writes so
