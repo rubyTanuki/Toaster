@@ -9,7 +9,7 @@ from tostr.core.resolver import BaseDependencyResolver
 
 if TYPE_CHECKING:
     from tostr.core.models import BaseStruct
-    from tostr.core.utils.progress import ProgressTracker
+    from tostr.utils.progress import ProgressTracker
 
 
 class Registry:

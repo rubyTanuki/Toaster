@@ -27,8 +27,7 @@ from tostr.agents import add_agent, remove_agent, list_agents, PROFILES
 
 from tostr.server import mcp
 
-from tostr.core.utils.logger import configure_cli_logging
-from tostr.core.utils.progress import ProgressTracker
+from tostr.utils import configure_cli_logging, ProgressTracker
 from rich.progress import Progress, TextColumn, BarColumn, TaskProgressColumn, TimeElapsedColumn
 
 import multiprocessing

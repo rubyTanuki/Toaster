@@ -23,7 +23,7 @@ from tostr.commands import (
     export_lockfile,
 )
 from tostr.serializer import InspectResult, SkeletonResult, SearchResult
-from tostr.core.utils.logger import configure_mcp_logging
+from tostr.utils.logger import configure_mcp_logging
 
 
 class WatcherRegistry:
