@@ -1,13 +1,12 @@
-"""Unit tests for cache format versioning (`core.cache_version` + the init/verify wiring)."""
 from __future__ import annotations
 import sqlite3
 from pathlib import Path
 
 import pytest
 
-from tostr.core.db import SqliteClient
 from tostr.core.paths import ProjectPaths
-from tostr.core.cache_version import (
+from tostr.storage.db import SqliteClient
+from tostr.storage.versioning import (
     CURRENT_CACHE_VERSION,
     incompatibility_reason,
     read_db_version,
