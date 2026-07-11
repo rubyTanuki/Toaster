@@ -1,7 +1,7 @@
 from __future__ import annotations
 from pathlib import Path
 
-from tostr.core.serializer import tost
+from tostr.serializer import tost
 from tostr.core.models import BaseFile, Directory
 
 

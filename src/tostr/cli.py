@@ -33,7 +33,7 @@ from rich.progress import Progress, TextColumn, BarColumn, TaskProgressColumn, T
 
 import multiprocessing
 
-from tostr.core import InspectResult, SkeletonResult, SearchResult
+from tostr.serializer import InspectResult, SkeletonResult, SearchResult
 from rich.text import Text
 from rich.syntax import Syntax
 from rich.tree import Tree

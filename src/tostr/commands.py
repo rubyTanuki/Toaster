@@ -9,7 +9,8 @@ from functools import lru_cache
 
 from tostr.semantic.llm import LLMClient
 from tostr.semantic.embeddings import EmbeddingClient, EmbeddingStrategy, OnnxEmbeddingStrategy
-from tostr.core import Registry, tost, InspectResult, SkeletonResult, SearchResult, BaseParser, SqliteClient, ProjectPaths, StructCache, BaseCodeStruct
+from tostr.core import Registry, BaseParser, SqliteClient, ProjectPaths, StructCache, BaseCodeStruct
+from tostr.serializer import tost, InspectResult, SkeletonResult, SearchResult
 from tostr.core import lockfile
 from tostr.core.context.config import ProjectConfig, default_ignore_text
 

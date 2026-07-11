@@ -340,8 +340,6 @@ class BaseClass(BaseCodeStruct):
         if not hasattr(self, 'node') or not self.node:
             raise ValueError("Node reference is required for skeletonization.")
         
-        from tostr.core.serializer import tost
-
         result_bytes = self.node.text
         start_byte = self.node.start_byte
         
@@ -358,8 +356,7 @@ class BaseClass(BaseCodeStruct):
             rel_start = child.node.start_byte - start_byte
             rel_end = child.node.end_byte - start_byte
             
-            method_data = tost.dump(child, depth=0)
-            method_skeleton = f"{method_data.id} | {method_data.signature}\n// {method_data.description}"
+            method_skeleton = f"{child.id} | {child.signature}\n// {child.description}"
             
             skeleton_bytes = method_skeleton.encode('utf-8')
             result_bytes = result_bytes[:rel_start] + skeleton_bytes + result_bytes[rel_end:]

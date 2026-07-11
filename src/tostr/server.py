@@ -22,7 +22,7 @@ from tostr.commands import (
     search_async,
     export_lockfile,
 )
-from tostr.core import InspectResult, SkeletonResult, SearchResult
+from tostr.serializer import InspectResult, SkeletonResult, SearchResult
 from tostr.core.utils.logger import configure_mcp_logging
 
 
