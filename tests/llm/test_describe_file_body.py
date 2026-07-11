@@ -6,8 +6,8 @@ from typing import Type
 from pydantic import BaseModel
 
 from tostr.semantic.llm.base import LLMClient, LLMStrategy
+from tostr.semantic.describer import LLMDescriber
 from tostr.core.models import BaseFile
-from tostr.core.describer import LLMDescriber
 from tostr.core.registry import Registry
 
 

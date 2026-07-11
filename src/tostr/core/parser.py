@@ -8,7 +8,7 @@ from loguru import logger
 from tostr.core.models import BaseFile, Directory, BaseStruct
 from tostr.core.registry import Registry
 from tostr.core.providers import LanguageProvider
-from tostr.core.describer import LLMDescriber, NoLLMDescriber
+from tostr.semantic.describer import LLMDescriber, NoLLMDescriber
 
 class BaseParser(ABC):
     def __init__(self, project_dir: str, llm=None, embedder=None, registry: Registry=None, cache: "StructCache"=None):
