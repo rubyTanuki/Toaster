@@ -3,7 +3,7 @@ from typing import List, Dict, Optional, TYPE_CHECKING, Set
 from pathlib import Path
 
 from tostr.core.models import BaseFile, BaseClass, BaseMethod, BaseField
-from tostr.core.context.config import ProjectConfig
+from tostr.config import ProjectConfig
 from tostr.core.paths import ProjectPaths
 from tostr.graph.resolver import BaseDependencyResolver
 

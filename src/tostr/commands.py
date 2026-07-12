@@ -13,7 +13,7 @@ from tostr.core import ProjectPaths, BaseCodeStruct
 from tostr.graph import Registry, BaseParser
 from tostr.serializer import tost, InspectResult, SkeletonResult, SearchResult
 from tostr.storage import lockfile
-from tostr.core.context.config import ProjectConfig, default_ignore_text
+from tostr.config import ProjectConfig, default_ignore_text
 from tostr.storage import SqliteClient, StructCache
 
 from tostr.storage.versioning import incompatibility_reason, read_db_version

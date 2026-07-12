@@ -7,7 +7,7 @@ import sqlite_vec
 from loguru import logger
 
 from tostr.core.paths import ProjectPaths
-from .lockfile import *
+from tostr.storage import lockfile
 from tostr.core.models import *
 from tostr.core.builders import BaseBuilder
 
