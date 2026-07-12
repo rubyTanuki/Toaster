@@ -1,4 +1,10 @@
+from __future__ import annotations
+from typing import TYPE_CHECKING
+
 from tostr.graph.resolver import BaseDependencyResolver
+
+if TYPE_CHECKING:
+    from tostr.graph.registry import Registry
 
 class PythonDependencyResolver(BaseDependencyResolver):
     def __init__(self, registry: Registry):
