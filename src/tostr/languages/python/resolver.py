@@ -1,4 +1,4 @@
-from tostr.core.resolver import BaseDependencyResolver
+from tostr.graph.resolver import BaseDependencyResolver
 
 class PythonDependencyResolver(BaseDependencyResolver):
     def __init__(self, registry: Registry):

@@ -5,7 +5,7 @@ from pathlib import Path
 from tostr.core.models import BaseFile, BaseClass, BaseMethod, BaseField
 from tostr.core.context.config import ProjectConfig
 from tostr.core.paths import ProjectPaths
-from tostr.core.resolver import BaseDependencyResolver
+from tostr.graph.resolver import BaseDependencyResolver
 
 if TYPE_CHECKING:
     from tostr.core.models import BaseStruct

@@ -3,7 +3,7 @@ import pytest
 from pathlib import Path
 from unittest.mock import MagicMock
 
-from tostr.core.registry import Registry
+from tostr.graph.registry import Registry
 from tostr.core.paths import ProjectPaths
 from tostr.core.models import BaseFile
 from tostr.core.providers import LanguageProvider
@@ -28,7 +28,7 @@ def test_html_extension_routing():
 def test_html_uses_noop_resolver(mock_registry):
     # HTML has no dependency resolution; it falls back to the base (no-op) resolver.
     mock_registry.language = "auto"
-    from tostr.core.resolver import BaseDependencyResolver
+    from tostr.graph.resolver import BaseDependencyResolver
     resolver = LanguageProvider.get_resolver(mock_registry, ".html")
     assert isinstance(resolver, BaseDependencyResolver)
 

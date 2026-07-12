@@ -1,7 +1,7 @@
 from __future__ import annotations
 import pytest
 from pathlib import Path
-from tostr.core.registry import Registry
+from tostr.graph.registry import Registry
 from tostr.core.paths import ProjectPaths
 from tostr.core.models import BaseFile, BaseClass, BaseMethod, BaseField
 

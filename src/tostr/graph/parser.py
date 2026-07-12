@@ -6,7 +6,7 @@ import hashlib
 from loguru import logger
 
 from tostr.core.models import BaseFile, Directory, BaseStruct
-from tostr.core.registry import Registry
+from tostr.graph.registry import Registry
 from tostr.core.providers import LanguageProvider
 from tostr.semantic.describer import LLMDescriber, NoLLMDescriber
 

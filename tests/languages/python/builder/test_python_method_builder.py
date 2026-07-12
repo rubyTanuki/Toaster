@@ -5,7 +5,7 @@ from unittest.mock import MagicMock
 
 from tree_sitter import Parser
 from tostr.languages.python.language import PYTHON_LANGUAGE
-from tostr.core.registry import Registry
+from tostr.graph.registry import Registry
 from tostr.core.models import BaseFile, BaseClass, BaseMethod, BaseStruct
 from tostr.languages.python.builders import PythonMethodBuilder
 

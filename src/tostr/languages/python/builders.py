@@ -4,7 +4,7 @@ from pathlib import Path
 import hashlib
 import re
 
-from tostr.core.registry import Registry
+from tostr.graph.registry import Registry
 from tostr.languages.python.language import PYTHON_LANGUAGE
 from tostr.core.builders import BaseBuilder, BaseFileBuilder, BaseClassBuilder, BaseMethodBuilder, BaseFieldBuilder, line_bounds
 from tostr.languages.python.queries import DEPENDENCY_QUERY

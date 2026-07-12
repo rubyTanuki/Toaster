@@ -9,7 +9,7 @@ class LanguageProvider:
     language_map = {
         "java": ("tostr.languages.java.builders", "JavaBuilder", "tostr.languages.java.resolver.JavaDependencyResolver"),
         "python": ("tostr.languages.python.builders", "PythonBuilder", "tostr.languages.python.resolver.PythonDependencyResolver"),
-        "html": ("tostr.languages.html.builders", "HtmlBuilder", "tostr.core.resolver.BaseDependencyResolver"),
+        "html": ("tostr.languages.html.builders", "HtmlBuilder", "tostr.graph.resolver.BaseDependencyResolver"),
     }
 
     # Maps file extension to language key in language_map.
@@ -57,7 +57,7 @@ class LanguageProvider:
             resolver_class = getattr(module, class_name)
             return resolver_class(registry)
 
-        from tostr.core.resolver import BaseDependencyResolver
+        from tostr.graph.resolver import BaseDependencyResolver
         return BaseDependencyResolver(registry)
 
 

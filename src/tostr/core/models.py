@@ -9,7 +9,7 @@ from pathlib import Path
 from loguru import logger
 
 if TYPE_CHECKING:
-    from tostr.core.registry import Registry
+    from tostr.graph.registry import Registry
     from tree_sitter import Node
 
 @dataclass(eq=False)

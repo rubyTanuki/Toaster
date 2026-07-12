@@ -10,7 +10,7 @@ import os
 from typing import Union, List
 
 from tostr.exceptions import TostrError
-from tostr.core.registry import Registry
+from tostr.graph.registry import Registry
 
 from tostr.commands import (
     init_project,

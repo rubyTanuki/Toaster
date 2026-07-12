@@ -7,7 +7,7 @@ import json
 from tostr.core.models import *
 
 if TYPE_CHECKING:
-    from tostr.core.registry import Registry
+    from tostr.graph.registry import Registry
     from tree_sitter import Node
 
 

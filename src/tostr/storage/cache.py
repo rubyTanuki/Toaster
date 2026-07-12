@@ -14,7 +14,7 @@ from tostr.core.builders import BaseBuilder
 from .db import SqliteClient
 
 if TYPE_CHECKING:
-    from tostr.core.registry import Registry
+    from tostr.graph.registry import Registry
 
 
 def _deserialize_float32(blob) -> Optional[List[float]]:

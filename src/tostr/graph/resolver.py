@@ -6,7 +6,7 @@ from loguru import logger
 
 if TYPE_CHECKING:
     from tostr.core.models import BaseStruct, BaseFile, BaseClass, BaseMethod, BaseField
-    from tostr.core.registry import Registry
+    from tostr.graph.registry import Registry
 
 
 class BaseDependencyResolver:
