@@ -16,7 +16,7 @@ import pytest
 
 import tostr.commands as commands
 from tostr.commands import parse_async, process_single_file, process_file_deletion, watch_async
-from tostr.core.db import SqliteClient
+from tostr.storage.db import SqliteClient
 from tostr.core.paths import ProjectPaths
 from tostr.exceptions import APIKeyError
 

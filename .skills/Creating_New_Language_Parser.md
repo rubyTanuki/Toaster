@@ -131,13 +131,17 @@ Register in **two places** before writing any builder logic:
 **`src/tostr/core/providers.py`** — add to `language_map`:
 ```python
 language_map = {
-    "java":   ("tostr.languages.java.builders",   "JavaBuilder",   "tostr.core.resolver.JavaDependencyResolver"),
-    "python": ("tostr.languages.python.builders", "PythonBuilder", "tostr.core.resolver.PythonDependencyResolver"),
-    "<lang>": ("tostr.languages.<lang>.builders", "<Lang>Builder", "tostr.core.resolver.<Lang>DependencyResolver"),
+    "java":   ("tostr.languages.java.builders",   "JavaBuilder",   "tostr.languages.java.resolver.JavaDependencyResolver"),
+    "python": ("tostr.languages.python.builders", "PythonBuilder", "tostr.languages.python.resolver.PythonDependencyResolver"),
+    "<lang>": ("tostr.languages.<lang>.builders", "<Lang>Builder", "tostr.languages.<lang>.resolver.<Lang>DependencyResolver"),
 }
 ```
 
-**`src/tostr/core/parser.py`** — add to the dependency support set:
+Your resolver lives beside your builder in `src/tostr/languages/<lang>/resolver.py` and subclasses
+`BaseDependencyResolver` from `tostr.graph.resolver`. (A language with no dependency support can point
+straight at `tostr.graph.resolver.BaseDependencyResolver`, as `html` does.)
+
+**`src/tostr/graph/parser.py`** — add to the dependency support set:
 ```python
 self.langs_with_dependency_support = {"java", "python", "<lang>"}
 ```
@@ -504,7 +508,7 @@ The resolver is registered in `providers.py` via `language_map`, not in `registr
 
 ### Performance: wildcard import scope
 
-Step 3 (`_get_potential_lookup_parents`) adds wildcard entries like `"src.tostr.core.registry.*"`. `resolve_methods` then calls `get_classes_in_package(package_name)` and iterates all classes. For large packages this is O(classes × methods). Cache `_potential_parents_cache` on the parent struct to avoid recomputing per method call (the base class already does this for `BaseClass` parents).
+Step 3 (`_get_potential_lookup_parents`) adds wildcard entries like `"src.tostr.graph.registry.*"`. `resolve_methods` then calls `get_classes_in_package(package_name)` and iterates all classes. For large packages this is O(classes × methods). Cache `_potential_parents_cache` on the parent struct to avoid recomputing per method call (the base class already does this for `BaseClass` parents).
 
 ### Bubble-up storm guard
 

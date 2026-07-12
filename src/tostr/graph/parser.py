@@ -1,18 +1,14 @@
 from __future__ import annotations
 from pathlib import Path
 from abc import ABC
-from typing import TYPE_CHECKING
 import asyncio
 import hashlib
 from loguru import logger
 
 from tostr.core.models import BaseFile, Directory, BaseStruct
-from tostr.core.registry import Registry
+from tostr.graph.registry import Registry
 from tostr.core.providers import LanguageProvider
-from tostr.core.describer import LLMDescriber, NoLLMDescriber
-
-if TYPE_CHECKING:
-    from tostr.core.cache import StructCache
+from tostr.semantic.describer import LLMDescriber, NoLLMDescriber
 
 class BaseParser(ABC):
     def __init__(self, project_dir: str, llm=None, embedder=None, registry: Registry=None, cache: "StructCache"=None):

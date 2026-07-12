@@ -9,7 +9,7 @@ Separation of concerns: this module owns only the *serialization format* (JSON s
 output, version stamp + compatibility gate, no-op write). It deals in plain `{uid: {...}}` entry
 dicts and paths — it never touches the database. Gathering the entries from the cache is the
 StructCache's job (`StructCache.collect_descriptions`); orchestrating the two is the command's job
-(`commands.export_lockfile`). Because it depends only on `cache_version`, both `registry` and
+(`commands.export_lockfile`). Because it depends only on `versioning`, both `registry` and
 `commands` can import it without an import cycle.
 """
 from __future__ import annotations
@@ -18,7 +18,7 @@ from pathlib import Path
 from typing import Optional, Dict
 from loguru import logger
 
-from tostr.core.cache_version import incompatibility_reason, CURRENT_CACHE_VERSION
+from tostr.storage.versioning import incompatibility_reason, CURRENT_CACHE_VERSION
 
 LOCKFILE_NAME = "tostr.lock.json"
 

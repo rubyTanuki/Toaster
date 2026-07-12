@@ -10,7 +10,7 @@ import os
 from typing import Union, List
 
 from tostr.exceptions import TostrError
-from tostr.core.registry import Registry
+from tostr.graph.registry import Registry
 
 from tostr.commands import (
     init_project,
@@ -22,8 +22,8 @@ from tostr.commands import (
     search_async,
     export_lockfile,
 )
-from tostr.core import InspectResult, SkeletonResult, SearchResult
-from tostr.core.utils.logger import configure_mcp_logging
+from tostr.serializer import InspectResult, SkeletonResult, SearchResult
+from tostr.utils.logger import configure_mcp_logging
 
 
 class WatcherRegistry:

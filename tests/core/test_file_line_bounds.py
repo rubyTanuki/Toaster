@@ -2,11 +2,11 @@ from __future__ import annotations
 from pathlib import Path
 from unittest.mock import MagicMock
 
-from tostr.core.registry import Registry
+from tostr.graph.registry import Registry
 from tostr.core.paths import ProjectPaths
 from tostr.core.models import BaseFile, Directory
 from tostr.core.builders import BaseFileBuilder
-from tostr.core.serializer import tost
+from tostr.serializer import tost
 from tostr.languages.python.builders import PythonFileBuilder
 
 

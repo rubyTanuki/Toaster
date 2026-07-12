@@ -13,7 +13,7 @@ Dependency resolution is a vastly more complicated issue to handle than struct e
 
 Implement full [LANGUAGE] dependency parsing and resolution.
 1. Add import parsing and cleaning to `languages/[LANGUAGE]/builders.py` for the file factory.
-2. Integrate the dependency resolution in `core/resolver.py`.
+2. Integrate the dependency resolution in the language's `resolver.py` (`src/tostr/languages/<lang>/resolver.py`).
 3. Update the unit test suite to ensure dependencies are resolved properly. Typically we just use llms for this but due to the complexity of dependency resolution, this should be looked at with extra care. A comprehensive list of all ways [LANGUAGE] structs can depend on another should be enumerated, and all that could reasonably be resolved by tostr should be asserted.
 
 

@@ -3,7 +3,7 @@ import pytest
 from pathlib import Path
 from unittest.mock import MagicMock
 
-from tostr.core.registry import Registry
+from tostr.graph.registry import Registry
 from tostr.core.paths import ProjectPaths
 from tostr.core.models import BaseFile
 from tostr.languages.python.builders import PythonFileBuilder

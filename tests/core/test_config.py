@@ -1,7 +1,7 @@
 from __future__ import annotations
 import pytest
 from pathlib import Path
-from tostr.core.context.config import ProjectConfig # Change this to your actual filename
+from tostr.config import ProjectConfig # Change this to your actual filename
 from tostr.core.models import BaseStruct
 
 @pytest.fixture

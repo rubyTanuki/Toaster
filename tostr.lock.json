@@ -2,7 +2,7 @@
   "cache_format_version": 1,
   "entries": {
     ".": {
-      "description": "The root directory acts as the primary workspace for the Tostr framework, housing the core source logic, project-specific resources, and configuration metadata. The src directory encapsulates the modular architecture, including AST-based parsing, graph-based persistence, and semantic processing engines, while auxiliary directories manage environment-specific skills and project-level assets to support automated codebase analysis and orchestration.",
+      "description": "The root directory acts as the primary workspace for the Tostr project, housing the core analysis engine in 'src/tostr' while maintaining auxiliary configuration and resource management folders. The 'src/tostr' directory functions as the central architectural hub, orchestrating project indexing, semantic search, and LLM-driven code interpretation through a modular design that integrates AST parsing, persistent storage, and unified CLI/server interfaces.",
       "diff_hash": ""
     },
     ".claude": {
@@ -30,11 +30,11 @@
       "diff_hash": ""
     },
     "src": {
-      "description": "The Tostr core package serves as a modular framework for codebase analysis, semantic indexing, and AI-driven project orchestration. It integrates tree-sitter-based AST parsing with a graph-based persistence layer to maintain a synchronized, searchable representation of codebases. The architecture is structured into distinct layers: a CLI/Server interface for lifecycle management, a language-specific normalization layer for cross-reference consistency, a semantic processing engine for vector embeddings and LLM interactions, and a robust exception framework for diagnostic integrity. This design enables incremental analysis, efficient metadata generation, and consistent agent-based configuration management across complex, multi-language projects.",
+      "description": "The src/tostr directory serves as the core architectural hub for the Tostr codebase analysis engine. It encapsulates the entire lifecycle of project indexing, semantic search, and LLM-driven code interpretation. The architecture is modularized into foundational data models (core), language-specific AST parsing (languages), persistent state management (storage), and semantic analysis (semantic). It provides a unified command-line interface (cli/commands) and server-side orchestration (server) to maintain a synchronized, queryable representation of source code, supported by robust error handling, configuration management, and cross-cutting utility services.",
       "diff_hash": ""
     },
     "src/tostr": {
-      "description": "The Tostr core package serves as a modular framework for codebase analysis, semantic indexing, and AI-driven project orchestration. It integrates tree-sitter-based AST parsing with a graph-based persistence layer to maintain a synchronized, searchable representation of codebases. The architecture is structured into distinct layers: a CLI/Server interface for lifecycle management, a language-specific normalization layer for cross-reference consistency, a semantic processing engine for vector embeddings and LLM interactions, and a robust exception framework for diagnostic integrity. This design enables incremental analysis, efficient metadata generation, and consistent agent-based configuration management across complex, multi-language projects.",
+      "description": "The src/tostr directory serves as the core architectural hub for the Tostr codebase analysis engine. It encapsulates the entire lifecycle of project indexing, semantic search, and LLM-driven code interpretation. The architecture is modularized into foundational data models (core), language-specific AST parsing (languages), persistent state management (storage), and semantic analysis (semantic). It provides a unified command-line interface (cli/commands) and server-side orchestration (server) to maintain a synchronized, queryable representation of source code, supported by robust error handling, configuration management, and cross-cutting utility services.",
       "diff_hash": ""
     },
     "src/tostr/__init__.py": {
@@ -86,16 +86,16 @@
       "diff_hash": "dd1b8472960f50c2c44fd2c466976b8a"
     },
     "src/tostr/cli.py": {
-      "description": "The CLI entry point for Tostr, providing a Typer-based interface for managing project indexing, semantic search, file watching, and agent-specific configuration. It orchestrates the lifecycle of the Tostr database, including initialization, parsing, exporting, and status reporting, while providing utilities for syntax highlighting and console-based inspection of code structures.",
-      "diff_hash": "352df97a31ea1b897271ad617ece2fcd"
+      "description": "Provides the command-line interface (CLI) for the Tostr project, orchestrating project indexing, semantic search, structural visualization, and AI agent integration. It leverages Rich for terminal output, manages SQLite-based persistence, and implements file-system monitoring to maintain an up-to-date codebase representation.",
+      "diff_hash": "fcc6f3fc140b71a60965c6795e43824d"
     },
     "src/tostr/cli.py#TostrHighlighter": {
       "description": "A specialized syntax highlighter for the .tost human-readable format, extending RegexHighlighter to apply visual styling to UIDs, multi-line comments, structural line references, dependency edges, and section headers.",
       "diff_hash": "7d227230070571f17c909ab734aec335"
     },
     "src/tostr/cli.py#_render_inspect(...)": {
-      "description": "Formats and prints detailed inspection results for a code structure, including its signature, description, dependency edges, and child members.",
-      "diff_hash": "e4ce30ff737e9b83c005e3a058926e2e"
+      "description": "Formats and prints an InspectResult object or raw string to the console, applying syntax highlighting, structural grouping for code members, and rendering source code bodies with line numbers.",
+      "diff_hash": "b1a9caa2fe6e44ab8bdf2c1b6134c6b2"
     },
     "src/tostr/cli.py#_render_search(...)": {
       "description": "Renders a list of search results to the console, displaying IDs, types, and similarity distances with formatted styling.",
@@ -162,32 +162,32 @@
       "diff_hash": "46d744d19b9ffd8585d3873890fe04ba"
     },
     "src/tostr/commands.py": {
-      "description": "Orchestrates the Tostr project lifecycle, providing a high-level command interface for database management, AST parsing, semantic indexing, and file system monitoring. It bridges project configuration, SQLite-based persistence, and LLM-driven code analysis to maintain a synchronized, searchable structural representation of a codebase.",
-      "diff_hash": "1389e41e921bd7c4dec4e72cbb69224f"
+      "description": "Provides the core command-line and asynchronous orchestration layer for the Tostr project, managing project initialization, AST parsing, database lifecycle, file system monitoring, and LLM-driven code analysis. It coordinates interactions between the file system, SQLite-backed cache, and LLM providers to maintain a synchronized, queryable representation of the codebase.",
+      "diff_hash": "ed5ddf7b6a9efa7a1a2268699d7d7dee"
     },
     "src/tostr/commands.py#_append_gitignore(...)": {
       "description": "Idempotently adds the .tostr/ directory to the project's .gitignore file, creating the file if necessary only within active git repositories.",
       "diff_hash": "3c4cf4f3b8df1dfd3cdbc12da96321eb"
     },
     "src/tostr/commands.py#_build_ast_async(...)": {
-      "description": "Constructs and executes a project-wide AST parsing pipeline by initializing the LLM client, embedding engine, SQLite cache, and registry, then invoking the BaseParser to process files and return the populated parser instance.",
-      "diff_hash": "91e9af67f86b343e907ad807d495cd4c"
+      "description": "Constructs an Abstract Syntax Tree (AST) by parsing project files, resolving dependencies, and optionally generating LLM-based descriptions and embeddings.",
+      "diff_hash": "32c14ef0264a20e25b6fbfd615a33a1d"
     },
     "src/tostr/commands.py#_guarded_write(...)": {
       "description": "Executes a database-mutating function off-loop, serializing access via an optional lock and skipping execution if the task has been superseded by a newer operation.",
       "diff_hash": "c1e2cc39923808bd53129ec47db4f014"
     },
     "src/tostr/commands.py#_verify_db_exists(...)": {
-      "description": "Validates the existence and version compatibility of the Tostr database, raising specific exceptions if initialization is required or the schema is outdated.",
-      "diff_hash": "cc626caa7e2138576436474d249fd152"
+      "description": "Validates the existence and compatibility of the Tostr database at the specified project path, raising errors if the database is missing or uses an outdated schema.",
+      "diff_hash": "c0b0da514634940a220ea76fb4e10305"
     },
     "src/tostr/commands.py#clean_db(...)": {
       "description": "Removes generated cache files and optionally purges authored configuration files to perform a full project reset.",
       "diff_hash": "02263477afdf1a410a9498ababb1d483"
     },
     "src/tostr/commands.py#export_lockfile(...)": {
-      "description": "Exports the current cache state to a version-controlled JSON lockfile, optionally including vector data, to facilitate seeding across environments.",
-      "diff_hash": "93a4d282f62e644aa0d9607f3a86632e"
+      "description": "Snapshots project descriptions and optionally vectors into a version-controlled lockfile to enable cold-start seeding without re-running LLM inference.",
+      "diff_hash": "e99cb57d2f82258f55c2beee0a43e35f"
     },
     "src/tostr/commands.py#get_cached_embedding_client(...)": {
       "description": "Initializes and returns an EmbeddingClient configured with an ONNX strategy, ensuring the underlying model graph is instantiated only once per process.",
@@ -198,56 +198,104 @@
       "diff_hash": "69612bc7e21a2f46d9d56502be66e964"
     },
     "src/tostr/commands.py#get_status(...)": {
-      "description": "Retrieves metadata and structural statistics from the project's SQLite cache, including file counts by type and total edge count.",
-      "diff_hash": "b330c82d3df248d80370dc58b425dd25"
+      "description": "Compiles a diagnostic summary of the project's Tostr database, including file system paths, storage metrics, and counts of stored structures and edges.",
+      "diff_hash": "fc1a560645bdea2073e13acdbea23881"
     },
     "src/tostr/commands.py#init_project(...)": {
       "description": "Scaffolds the project directory with default configuration files (tostr.toml, .tostrignore) and ensures the .tostr/ directory is ignored by version control.",
       "diff_hash": "30cd85c6e13fa9a4af235a2c2b50b823"
     },
     "src/tostr/commands.py#inspect_async(...)": {
-      "description": "Inspects specific code structures by ID or UID, returning their serialized representation with optional body content.",
-      "diff_hash": "5fc58d8c978067398e172b3d15c3c4bb"
+      "description": "Retrieves and formats structural information for specified IDs or UIDs from the project cache, optionally including full source bodies.",
+      "diff_hash": "cfd977b552f8656540583432bc1471d7"
     },
     "src/tostr/commands.py#parse_async(...)": {
-      "description": "Executes a full project parsing pipeline by validating cache compatibility, initializing configuration overrides, invoking the AST construction process, and persisting the resulting registry to the SQLite cache.",
-      "diff_hash": "f159b3101938978660b501ed3e594948"
+      "description": "Orchestrates a full project parse and cache build, including database version validation, configuration-driven LLM strategy selection, and AST persistence.",
+      "diff_hash": "c02812369daeb4d2756be3b094a4e5d4"
     },
     "src/tostr/commands.py#process_file_deletion(...)": {
-      "description": "Handles file deletion events by purging the corresponding subtree from the database to ensure cache consistency.",
-      "diff_hash": "3623503e490fa6074f9e5f7db33917c0"
+      "description": "Removes all database entries associated with a deleted file or directory subtree to ensure cache integrity and prevent stale data.",
+      "diff_hash": "c49df8d8e52d238c03b8aa0d2b2c295e"
     },
     "src/tostr/commands.py#process_single_file(...)": {
-      "description": "Processes a single file by parsing its AST, resolving dependencies, and updating the cache with descriptions and embeddings, while handling task cancellation and stale data pruning.",
-      "diff_hash": "d3866ed71d7113b32b06382dc251cbd5"
+      "description": "Updates the project cache for a single file by reparsing, resolving dependencies, and performing incremental writes to the database while maintaining consistency with existing project-wide data.",
+      "diff_hash": "4335ecf41ad841e68343eb78ce49e88a"
     },
     "src/tostr/commands.py#resolve_uid_to_id(...)": {
-      "description": "Resolves a unique identifier (UID) to its internal database ID by querying the structs table.",
-      "diff_hash": "1dd697211140cd085b81758f62f629cc"
+      "description": "Resolves a unique identifier (UID) to its internal database ID by querying the project's SQLite store.",
+      "diff_hash": "bc11cbccecd43cecafedefa8e9520d0a"
     },
     "src/tostr/commands.py#search_async(...)": {
-      "description": "Performs a semantic search against the vector index, optionally filtering by structure type and returning the top-k nearest matches.",
-      "diff_hash": "0aa12506a00a4a6bba9af58dcb09ea7b"
+      "description": "Performs a semantic vector search across the project database to find code structures matching a natural language query, optionally filtered by type.",
+      "diff_hash": "e20de8d01c95a17f4bd259ad9b72950d"
     },
     "src/tostr/commands.py#skeleton_async(...)": {
-      "description": "Loads a specific file subtree into the registry and generates a structural skeleton dump using the specified depth and filter constraints.",
-      "diff_hash": "7e8e880ad280477beef446f82bef6c00"
+      "description": "Generates a hierarchical skeleton representation of a specific project subtree by loading relevant structures into the cache and dumping their metadata.",
+      "diff_hash": "5d2dde5d1a02c513055a1411565d9070"
     },
     "src/tostr/commands.py#watch_async(...)": {
       "description": "Monitors a target directory for file system changes using awatch, dispatching asynchronous tasks to process additions, modifications, or deletions while maintaining a serialized write lock to ensure database integrity.",
       "diff_hash": "6888accb926431cdcbe0ffb068339d62"
     },
+    "src/tostr/config.py": {
+      "description": "Orchestrates project configuration management and ignore-rule resolution for the tostr utility. It integrates settings from configuration files and filesystem-based ignore templates, providing a unified interface for language-specific defaults and path-based exclusion logic.",
+      "diff_hash": "f42360388396144c9a263b15505b2854"
+    },
+    "src/tostr/config.py#ProjectConfig": {
+      "description": "Manages project-level configuration and file-ignore logic by aggregating settings from tostr.toml, .tostrignore, and hardcoded defaults. It provides a centralized interface for resolving project-specific parameters like language and LLM strategies while enforcing path-based exclusion rules.",
+      "diff_hash": "8562a4d3e8860dda972e5aca7fb75377"
+    },
+    "src/tostr/config.py#ProjectConfig.__init__(...)": {
+      "description": "Initializes the configuration state by loading the toml file, building path ignore specifications, and applying CLI overrides.",
+      "diff_hash": "adb7269d836fcb55dee7f2f044cab15b"
+    },
+    "src/tostr/config.py#ProjectConfig._init_path_ignore(...)": {
+      "description": "Constructs a pathspec object for file exclusion, prioritizing a local .tostrignore file if present, otherwise falling back to language-specific default ignore patterns.",
+      "diff_hash": "32551b4564d27d40b0206b7b57f23c84"
+    },
+    "src/tostr/config.py#ProjectConfig._init_toml_config(...)": {
+      "description": "Parses and returns the project configuration from a tostr.toml file located at the project root, returning an empty dictionary if the file is missing.",
+      "diff_hash": "f90f1f9cfeaa0da657938b299ad4d0fa"
+    },
+    "src/tostr/config.py#ProjectConfig.is_ignored(...)": {
+      "description": "Determines if a given file path should be ignored by checking it against hardcoded defaults and project-specific ignore rules, normalizing paths relative to the project root.",
+      "diff_hash": "4df4b34a82a7441e9e37acd32dc4498d"
+    },
+    "src/tostr/config.py#ProjectConfig.language(...)": {
+      "description": "Returns the active programming language, prioritizing CLI overrides over the toml configuration or defaulting to 'auto'.",
+      "diff_hash": "4b1def57d6b82d810ff1ec35ecb9ada9"
+    },
+    "src/tostr/config.py#ProjectConfig.llm_options(...)": {
+      "description": "Extracts provider-specific LLM configuration options from the toml file, excluding the strategy identifier.",
+      "diff_hash": "d54383508107eea5b6558ce4d6685eb4"
+    },
+    "src/tostr/config.py#ProjectConfig.llm_strategy(...)": {
+      "description": "Resolves the LLM strategy by prioritizing CLI overrides, then the toml configuration, defaulting to 'gemini'.",
+      "diff_hash": "fd8a7a3cfc0ec23b5b4dfbb3c9cadaa7"
+    },
+    "src/tostr/config.py#_languages_for(...)": {
+      "description": "Resolves a language identifier into a list of concrete language strings, expanding 'auto' to all supported languages via the LanguageProvider.",
+      "diff_hash": "5594a3ad3e704f7821d8b7b3a667c9ca"
+    },
+    "src/tostr/config.py#default_ignore_text(...)": {
+      "description": "Generates the content for a default .tostrignore file by concatenating language-specific ignore templates with descriptive headers.",
+      "diff_hash": "1dda3b7c82d8b29354d5c9f8b4630ab0"
+    },
+    "src/tostr/config.py#language_default_ignore_lines(...)": {
+      "description": "Retrieves a consolidated list of ignore patterns from language-specific default template files for use as fallback configuration.",
+      "diff_hash": "02f87fc27d1166a9cfd1fa56c7ae5887"
+    },
     "src/tostr/core": {
-      "description": "Core architectural layer for codebase analysis, indexing, and persistence. Orchestrates the lifecycle of project representation through a graph-based model, managing structural parsing, dependency resolution, and semantic metadata generation. Provides a unified infrastructure for SQLite-backed storage, multi-tier caching, and language-specific factory patterns, enabling efficient, incremental, and version-controlled analysis of complex codebases.",
+      "description": "Defines the foundational architectural abstractions and hierarchical data models for codebase representation. It provides a graph-based structure for AST-derived components, a factory-based deserialization framework for object reconstruction, and centralized registry management for language-specific providers and LLM client strategies, alongside standardized project path resolution.",
       "diff_hash": ""
     },
     "src/tostr/core/__init__.py": {
-      "description": "Empty File",
-      "diff_hash": "631034d198cd52c564926183aab3c22a"
+      "description": "Package initialization module for the tostr.core namespace. Exposes core architectural abstractions including structural models (BaseStruct, BaseCodeStruct, Directory, BaseClass, BaseField, BaseMethod, BaseFile), the LanguageProvider interface, and ProjectPaths utility for project-level path management.",
+      "diff_hash": "7e6ee7a11259d26492ca5aeb03736c1b"
     },
     "src/tostr/core/builders.py": {
-      "description": "Implements a hierarchical factory pattern for deserializing structural code representations, including files, directories, classes, methods, and fields, from dictionary-based metadata. The module leverages a centralized registry system to manage object instantiation, dependency resolution, and structural reconstruction within the project analysis pipeline.",
-      "diff_hash": "a628f15e98e45e4d72f443e3c03117d5"
+      "description": "Implements a factory-based deserialization framework for mapping serialized dictionary representations and AST nodes into a structured hierarchy of code components (Files, Directories, Classes, Methods, Fields). The module provides a unified registry-backed builder pattern to reconstruct project metadata and structural attributes, facilitating the transformation of raw source analysis into typed, navigable object models.",
+      "diff_hash": "cc242734450980a3a533a1c0ca17823f"
     },
     "src/tostr/core/builders.py#BaseBuilder": {
       "description": "An abstract factory base class that provides a unified interface for instantiating specialized builder objects for various structural components within a registry-managed system.",
@@ -282,12 +330,12 @@
       "diff_hash": "1ad84a8216dfa554a696f172c4655a94"
     },
     "src/tostr/core/builders.py#BaseClassBuilder": {
-      "description": "A specialized builder class responsible for instantiating BaseClass objects from dictionary-based representations, facilitating the deserialization of structural code metadata within the project registry.",
-      "diff_hash": "9f11efe76b08b7cb0892e7829080f906"
+      "description": "A specialized builder class for instantiating BaseClass objects from dictionary representations, facilitating the reconstruction of code structure metadata within the project registry.",
+      "diff_hash": "57b439092b1590ece8845d431b23dc7b"
     },
     "src/tostr/core/builders.py#BaseClassBuilder.from_dict(...)": {
-      "description": "Constructs and returns a BaseClass instance by parsing a dictionary, resolving file paths relative to the project root and deserializing dependency strings from JSON format.",
-      "diff_hash": "37b4cccc46dcaca78b9bf29a8b441beb"
+      "description": "Constructs and returns a BaseClass instance by mapping dictionary keys to object attributes, resolving file paths relative to the project root and deserializing dependency lists.",
+      "diff_hash": "e1003cb97a24045ad0dd55f4d9cca89e"
     },
     "src/tostr/core/builders.py#BaseCodeStructBuilder": {
       "description": "Abstract builder implementation for transforming AST nodes into structured code representations, serving as a specialized factory for BaseStruct subclasses within the structural analysis pipeline.",
@@ -298,32 +346,32 @@
       "diff_hash": "60cf7671ddcd2deaec06face8a09764b"
     },
     "src/tostr/core/builders.py#BaseFieldBuilder": {
-      "description": "A specialized builder class responsible for instantiating BaseField objects from dictionary representations, facilitating the deserialization of field metadata and dependency structures within the project registry.",
-      "diff_hash": "5bbd33a34b6ad64f1d8dcd9e87eaa1d5"
+      "description": "A specialized builder class responsible for instantiating BaseField objects from dictionary representations, facilitating the reconstruction of code structure metadata from serialized formats.",
+      "diff_hash": "1cde65fae2b249751623952f4bad39f7"
     },
     "src/tostr/core/builders.py#BaseFieldBuilder.from_dict(...)": {
-      "description": "Constructs and returns a BaseField instance by mapping dictionary keys to object attributes, resolving file paths relative to the project root and parsing JSON-encoded dependency strings.",
-      "diff_hash": "c4fd7cf99a7dd21b9757f97727cbbbe7"
+      "description": "Constructs and returns a BaseField instance by parsing a dictionary, resolving file paths relative to the project root, and deserializing dependency strings.",
+      "diff_hash": "8bf21f39db402d30ae67404b5d6c16c1"
     },
     "src/tostr/core/builders.py#BaseFileBuilder": {
-      "description": "A factory class responsible for instantiating BaseFile objects from filesystem paths or serialized dictionary representations, integrating them into the project registry.",
-      "diff_hash": "4c8760f206e2c19fa655dcbbca51b428"
+      "description": "A specialized builder class for instantiating BaseFile objects from filesystem paths or serialized dictionary representations, integrating them into the project registry.",
+      "diff_hash": "763a8b128672c9c2b8c6670b7e989e77"
     },
     "src/tostr/core/builders.py#BaseFileBuilder.from_dict(...)": {
-      "description": "Deserializes a dictionary into a BaseFile instance, mapping keys such as path, name, and dependency metadata while ensuring path normalization via the registry.",
-      "diff_hash": "1318b868ecc19bb14e3b0f3420b381ce"
+      "description": "Constructs a BaseFile instance from a dictionary, mapping metadata fields including dependencies, line numbers, and content hashes while resolving the file path relative to the project root.",
+      "diff_hash": "4c0af40b45260218a1a50f26e4320207"
     },
     "src/tostr/core/builders.py#BaseFileBuilder.from_path(...)": {
-      "description": "Constructs a BaseFile instance from a filesystem path by resolving it relative to the project root and assigning it a unique identifier based on its path.",
-      "diff_hash": "9f71af461cae7759bafc777946b3ec18"
+      "description": "Instantiates a BaseFile object from a given filesystem path, assigning a unique identifier based on the relative project path and associating it with the current registry.",
+      "diff_hash": "502185d062f13af5800cb85ada84bf65"
     },
     "src/tostr/core/builders.py#BaseMethodBuilder": {
-      "description": "A specialized builder class for instantiating BaseMethod objects from dictionary-based metadata, facilitating the reconstruction of code structure entities within the project registry.",
-      "diff_hash": "15d0824451edad80b679a27afacb8665"
+      "description": "A specialized builder class for instantiating BaseMethod objects from dictionary representations, facilitating the deserialization of method metadata and structural attributes within the project registry context.",
+      "diff_hash": "69259bb25d6b19df58f8bba0af1932da"
     },
     "src/tostr/core/builders.py#BaseMethodBuilder.from_dict(...)": {
-      "description": "Constructs and returns a BaseMethod instance by parsing a dictionary, resolving file paths relative to the project root and deserializing dependency metadata.",
-      "diff_hash": "67a3aee107f1c85ba7a90742a9b57c37"
+      "description": "Constructs a BaseMethod instance by mapping dictionary keys to object attributes, resolving file paths relative to the project root and parsing JSON-encoded dependency strings.",
+      "diff_hash": "c56271a0ddb6a26f365e07638401896c"
     },
     "src/tostr/core/builders.py#BaseStructBuilder": {
       "description": "Abstract base class defining a factory pattern for deserializing dictionary data into structured BaseStruct objects, utilizing a shared Registry for dependency resolution.",
@@ -338,200 +386,24 @@
       "diff_hash": "a046ba4d331cd72e8941cf320c963a18"
     },
     "src/tostr/core/builders.py#DirectoryBuilder": {
-      "description": "A specialized builder class responsible for instantiating and configuring Directory objects from dictionary-based data representations, integrating with a project registry for path resolution and dependency management.",
-      "diff_hash": "677bbc39856620e9090bce5b9afa4110"
+      "description": "A specialized builder class for instantiating Directory objects from dictionary representations, handling path resolution, metadata assignment, and deserialization of dependency strings.",
+      "diff_hash": "67664a86a14d76d94adaaec2897b6bfc"
     },
     "src/tostr/core/builders.py#DirectoryBuilder.from_dict(...)": {
-      "description": "Constructs a Directory instance from a dictionary, resolving the path relative to the project root and deserializing inbound and outbound dependency strings from JSON format.",
-      "diff_hash": "a0d0e4e53adc7d87d5e5dd1e0e54eb32"
+      "description": "Constructs and returns a Directory instance by resolving the provided path relative to the project root, assigning metadata, and parsing JSON-encoded inbound and outbound dependency strings.",
+      "diff_hash": "76b25e3f44abdf111b7f1506736a4e84"
     },
-    "src/tostr/core/cache_version.py": {
-      "description": "Manages cache format versioning and compatibility validation for Tostr database files. It defines the FormatVersion metadata structure and provides utilities to read, verify, and explain the compatibility status of existing cache files against the current application version.",
-      "diff_hash": "58c2d3fe1bb5b619b2a19c641cca5753"
-    },
-    "src/tostr/core/cache_version.py#FormatVersion": {
-      "description": "Represents the versioning metadata for a data format, encapsulating the version integer, a flag indicating backward-incompatible changes, and a descriptive summary of the version's purpose or modifications.",
-      "diff_hash": "c4653da81cc2561cc4e592312a44b6d2"
-    },
-    "src/tostr/core/cache_version.py#incompatibility_reason(...)": {
-      "description": "Evaluates whether a stored cache version is compatible with the current build, returning a descriptive error string if the version is newer than supported or if it predates a breaking format change.",
-      "diff_hash": "9983e2538fb8838c13583620104af7b2"
-    },
-    "src/tostr/core/cache_version.py#is_compatible(...)": {
-      "description": "Determines if the database at the specified path is compatible with the current application version by checking for incompatibility reasons against the stored version.",
-      "diff_hash": "b4e081f9fda9e9dc38112ac5aacc85eb"
-    },
-    "src/tostr/core/cache_version.py#read_db_version(...)": {
-      "description": "Retrieves the integer format version stamped in the SQLite user_version pragma of the specified database file, defaulting to 0 if no version is present.",
-      "diff_hash": "4c9ffacf7f3751b2e65a44e6bce08073"
-    },
-    "src/tostr/core/context": {
-      "description": "Centralizes project-level configuration management and context initialization for the tostr utility. Orchestrates the resolution of language-specific ignore patterns and CLI overrides, providing a unified interface for mapping abstract identifiers to concrete file-filtering templates.",
-      "diff_hash": ""
-    },
-    "src/tostr/core/context/__init__.py": {
-      "description": "Empty File",
-      "diff_hash": "000aadfa16ec84de7ec38bd089ef435a"
-    },
-    "src/tostr/core/context/config.py": {
-      "description": "Provides the core configuration management layer for the tostr utility, encapsulating project-level settings, language-specific ignore pattern resolution, and CLI override handling. The module integrates with the LanguageProvider to map abstract identifiers to concrete ignore templates, facilitating consistent file filtering and project context initialization.",
-      "diff_hash": "e697fc610fb32a0edcb305c18fe03621"
-    },
-    "src/tostr/core/context/config.py#ProjectConfig": {
-      "description": "Manages project-level configuration for the tostr utility, handling file system ignore patterns, LLM strategy selection, and TOML-based settings with support for CLI overrides.",
-      "diff_hash": "8562a4d3e8860dda972e5aca7fb75377"
-    },
-    "src/tostr/core/context/config.py#ProjectConfig.__init__(...)": {
-      "description": "Initializes the configuration state by loading the TOML file, building path ignore specifications, and applying CLI overrides.",
-      "diff_hash": "adb7269d836fcb55dee7f2f044cab15b"
-    },
-    "src/tostr/core/context/config.py#ProjectConfig._init_path_ignore(...)": {
-      "description": "Constructs a pathspec object from a .tostrignore file if present, or falls back to language-specific default ignore patterns.",
-      "diff_hash": "32551b4564d27d40b0206b7b57f23c84"
-    },
-    "src/tostr/core/context/config.py#ProjectConfig._init_toml_config(...)": {
-      "description": "Loads and parses the tostr.toml configuration file from the project root, returning an empty dictionary if the file is missing.",
-      "diff_hash": "f90f1f9cfeaa0da657938b299ad4d0fa"
-    },
-    "src/tostr/core/context/config.py#ProjectConfig.is_ignored(...)": {
-      "description": "Determines if a file path should be ignored by checking it against hardcoded system rules and project-specific ignore specifications.",
-      "diff_hash": "4df4b34a82a7441e9e37acd32dc4498d"
-    },
-    "src/tostr/core/context/config.py#ProjectConfig.language(...)": {
-      "description": "Resolves the target programming language by prioritizing CLI overrides over the project's TOML configuration, defaulting to 'auto'.",
-      "diff_hash": "4b1def57d6b82d810ff1ec35ecb9ada9"
-    },
-    "src/tostr/core/context/config.py#ProjectConfig.llm_options(...)": {
-      "description": "Extracts provider-specific LLM configuration settings from the TOML file, excluding the strategy selector.",
-      "diff_hash": "d54383508107eea5b6558ce4d6685eb4"
-    },
-    "src/tostr/core/context/config.py#ProjectConfig.llm_strategy(...)": {
-      "description": "Resolves the LLM strategy by prioritizing CLI overrides over TOML configuration, defaulting to 'gemini'.",
-      "diff_hash": "fd8a7a3cfc0ec23b5b4dfbb3c9cadaa7"
-    },
-    "src/tostr/core/context/config.py#_languages_for(...)": {
-      "description": "Resolves a language identifier into a list of concrete language names, expanding 'auto' to all supported languages via the LanguageProvider.",
-      "diff_hash": "5594a3ad3e704f7821d8b7b3a667c9ca"
-    },
-    "src/tostr/core/context/config.py#default_ignore_text(...)": {
-      "description": "Generates a concatenated string of default ignore patterns for specified languages by reading and formatting template files from the internal language directory.",
-      "diff_hash": "1dda3b7c82d8b29354d5c9f8b4630ab0"
-    },
-    "src/tostr/core/context/config.py#language_default_ignore_lines(...)": {
-      "description": "Retrieves a flattened list of default ignore patterns for the specified language(s) by parsing and aggregating lines from corresponding language-specific template files.",
-      "diff_hash": "02f87fc27d1166a9cfd1fa56c7ae5887"
-    },
-    "src/tostr/core/db.py": {
-      "description": "Manages a persistent SQLite-based AST graph cache, providing schema initialization, connection pooling, and vector search capabilities via sqlite-vec integration. It serves as the primary storage layer for code structure metadata, dependency relationships, and semantic embeddings.",
-      "diff_hash": "95dabb70fd7cc83356992f7eae869ee5"
-    },
-    "src/tostr/core/db.py#SQLiteCache": {
-      "description": "Manages a persistent SQLite-based AST graph cache, providing schema initialization, connection pooling, and vector search capabilities via sqlite-vec integration. It serves as the primary storage layer for code structure metadata, dependency relationships, and semantic embeddings.",
-      "diff_hash": "22294c16af5bbbdd6e49ed8a704b60bd"
-    },
-    "src/tostr/core/db.py#SQLiteCache.__init__(...)": {
-      "description": "Initializes the database file path, ensures the parent directory exists, and triggers the database schema setup.",
-      "diff_hash": "63e0b37ee2521e5477f2290bb2c6dc95"
-    },
-    "src/tostr/core/db.py#SQLiteCache.get_connection(...)": {
-      "description": "Yields a configured sqlite3 connection with row factory support and loaded vector extensions, optimized for concurrent read/write operations.",
-      "diff_hash": "4c2360c1f41786bbf0de660fdd5d7eab"
-    },
-    "src/tostr/core/db.py#SQLiteCache.init_db(...)": {
-      "description": "Configures the SQLite schema, including tables for code structures, dependency edges, and virtual tables for vector embeddings, while applying performance-oriented PRAGMAs and handling schema migrations.",
-      "diff_hash": "83c9ffdf979948ddd0cb1f749e2215ed"
-    },
-    "src/tostr/core/describer.py": {
-      "description": "Defines the core structural description framework for codebase indexing, providing a base infrastructure for asynchronous processing and specialized implementations for generating semantic metadata. It orchestrates the transition between LLM-driven natural language summarization and fallback structural signature extraction, utilizing multi-tier caching to optimize performance and maintain search signal integrity across the codebase.",
-      "diff_hash": "fadb87a92ab93df2cd96d46810b1d87f"
-    },
-    "src/tostr/core/describer.py#LLMDescriber": {
-      "description": "Orchestrates the generation and caching of semantic descriptions for codebase structures (directories, files, classes, methods) using an LLM, with a multi-tier caching strategy that prioritizes existing lockfile data to minimize redundant LLM calls.",
-      "diff_hash": "10cadf6a8796deb211164a7cb45b23af"
-    },
-    "src/tostr/core/describer.py#LLMDescriber.__init__(...)": {
-      "description": "Initializes the describer with LLM and embedding clients, optionally loading a lockfile to facilitate description reuse across sessions.",
-      "diff_hash": "22fb3de1c7f8cb6f7c9dc092eff6d3d4"
-    },
-    "src/tostr/core/describer.py#LLMDescriber._apply_description_map(...)": {
-      "description": "Updates method descriptions from an LLM-provided map and enqueues them for embedding, returning the set of successfully processed method indices.",
-      "diff_hash": "840d086cc62f7e5bce747858abdc4bc7"
-    },
-    "src/tostr/core/describer.py#LLMDescriber._describe_class(...)": {
-      "description": "Generates a description for a class and its methods by sending the class skeleton and method signatures to the LLM, applying the results to the class and its constituent methods.",
-      "diff_hash": "ccb4e79fe3726a2f1aca09bc150fe16b"
-    },
-    "src/tostr/core/describer.py#LLMDescriber._describe_directory(...)": {
-      "description": "Generates a description for a directory by aggregating descriptions of its children, or by delegating to the LLM if multiple children exist.",
-      "diff_hash": "5e218d09cab60a10cea876d5d4f1fb94"
-    },
-    "src/tostr/core/describer.py#LLMDescriber._describe_file(...)": {
-      "description": "Generates a description for a file by aggregating child descriptions and batch-processing undescribed methods via the LLM.",
-      "diff_hash": "3e18a35bbda327ce522aebeeef53b48d"
-    },
-    "src/tostr/core/describer.py#LLMDescriber._describe_method(...)": {
-      "description": "Marks a method as described and handles its embedding, intended for direct method calls outside of parent batching.",
-      "diff_hash": "082a53d8bf0aeefa60d12f983aa8e429"
-    },
-    "src/tostr/core/describer.py#LLMDescriber._seed_from_lockfile(...)": {
-      "description": "Attempts to populate a struct's description and vector from the lockfile if the struct's body hash matches, returning True on success to signal that LLM generation can be skipped.",
-      "diff_hash": "2418625e226fcac1cdf9da81d6521214"
-    },
-    "src/tostr/core/describer.py#LLMDescriber.describe(...)": {
-      "description": "Dispatches the structural description process to the appropriate handler based on the type of the provided BaseStruct.",
-      "diff_hash": "2b5064b97bb9dcab7166f0cd5f50af5a"
-    },
-    "src/tostr/core/describer.py#NoLLMDescriber": {
-      "description": "A fallback implementation of the struct describer that bypasses LLM-based natural language generation, instead enqueuing structural metadata directly for embedding to maintain search signal via raw code signatures and bodies.",
-      "diff_hash": "2576efad471e12c31b63dbb1defc0f05"
-    },
-    "src/tostr/core/describer.py#NoLLMDescriber.__init__(...)": {
-      "description": "Initializes the describer with a provided embedding client instance for processing structural data.",
-      "diff_hash": "baee673f50ac2a2bbc12dd9efb417677"
-    },
-    "src/tostr/core/describer.py#NoLLMDescriber._walk(...)": {
-      "description": "Recursively traverses the structural tree, enqueuing non-field structs for embedding and continuing the walk through all child nodes.",
-      "diff_hash": "eedb344283753cc8914c60dd6fa5a303"
-    },
-    "src/tostr/core/describer.py#NoLLMDescriber.describe(...)": {
-      "description": "Initiates the recursive traversal process starting from the provided root struct to enqueue all eligible components for embedding.",
-      "diff_hash": "cf1c569df8061457a5a28279811295fe"
-    },
-    "src/tostr/core/describer.py#_DescriberBase": {
-      "description": "Provides base infrastructure for structural description tasks, specifically managing progress tracking and asynchronous embedding workflows for data structures.",
-      "diff_hash": "c0836d557221c59355fc07a138f156a7"
-    },
-    "src/tostr/core/describer.py#_DescriberBase._advance(...)": {
-      "description": "Increments the progress tracker associated with the provided struct's registry for a specific phase by a given count, if the tracker exists.",
-      "diff_hash": "e0a3325c2e506508467dd7b99513d847"
-    },
-    "src/tostr/core/describer.py#_DescriberBase._handle_embed(...)": {
-      "description": "Queues the struct for embedding via the client if it lacks a vector, otherwise marks the embedding phase as complete in the progress tracker.",
-      "diff_hash": "6059d547efd016bdef6b5c45108ca898"
-    },
-    "src/tostr/core/lockfile.py": {
-      "description": "Manages the lifecycle of a project-specific lockfile (tostr.lock.json) used for caching component metadata, including diff hashes and descriptions. It provides robust I/O operations that handle version compatibility checks, deterministic serialization for version control stability, and idempotent writes to prevent unnecessary filesystem churn.",
-      "diff_hash": "a797213f8edb76ee843a32dd56aed575"
-    },
-    "src/tostr/core/lockfile.py#path_for(...)": {
-      "description": "Constructs and returns the absolute filesystem path for the lockfile within the specified project directory.",
-      "diff_hash": "01722227981b0aba78458dd0d39f4db9"
-    },
-    "src/tostr/core/lockfile.py#read(...)": {
-      "description": "Reads and validates the lockfile from the project root, returning the entries map if the cache format version is compatible, or None if the file is missing, corrupt, or outdated.",
-      "diff_hash": "229dc79b09eb8f0830b2d7d8cccd40e7"
-    },
-    "src/tostr/core/lockfile.py#write(...)": {
-      "description": "Serializes component entries into a deterministic JSON lockfile, performing an idempotent write only if the content differs from the existing file to minimize version control noise.",
-      "diff_hash": "ecfbaf8d8b09e78ae0c57956c78212eb"
+    "src/tostr/core/builders.py#line_bounds(...)": {
+      "description": "Calculates the 1-indexed start and end line numbers for a given tree-sitter node, adjusting for 0-indexed row offsets and exclusive end-point semantics to accurately reflect the source code span.",
+      "diff_hash": "644e7d74c3b5136cd12c97fcbda480d1"
     },
     "src/tostr/core/models.py": {
-      "description": "Defines the core hierarchical data structures for representing a codebase as a graph, facilitating dependency tracking, metadata management, and serialization for LLM-based analysis. The architecture utilizes a base structural node (BaseStruct) to model files, directories, classes, methods, and fields, enabling recursive traversal and state tracking via diff hashes and signature-based indexing.",
-      "diff_hash": "c827dce0897093cd37a118ce0f464ff7"
+      "description": "Defines the core hierarchical data models for representing a codebase as a graph structure. It provides a foundational set of abstract and concrete classes—including BaseStruct, BaseCodeStruct, BaseFile, Directory, BaseClass, BaseMethod, and BaseField—that encapsulate metadata, positional information, dependency tracking, and serialization logic necessary for AST-based analysis and LLM-driven context management.",
+      "diff_hash": "2cac4647e47a7653a9877ba770151e23"
     },
     "src/tostr/core/models.py#BaseClass": {
-      "description": "Represents a structural definition of a class within a codebase, extending BaseCodeStruct to manage inheritance, field dependencies, and documentation requirements. It facilitates dependency resolution across class hierarchies and provides mechanisms for generating skeletonized representations of class members.",
-      "diff_hash": "fa1090f14c922babe3ade2f2c519898c"
+      "description": "Represents a structural definition of a class within a codebase, managing inheritance, field types, and dependency resolution while providing mechanisms for documentation skeletonization and serialization.",
+      "diff_hash": "b66022374880820530cd98cd8a7488d2"
     },
     "src/tostr/core/models.py#BaseClass._clear_caches(...)": {
       "description": "Resets internal caches, specifically clearing the potential parents cache, and propagates the clear operation to the superclass.",
@@ -546,20 +418,20 @@
       "diff_hash": "b209cf9c90a224bd55b412f5cdaf5389"
     },
     "src/tostr/core/models.py#BaseClass.resolve_dependencies(...)": {
-      "description": "Orchestrates the resolution of all class dependencies, including imports, parent inheritance relationships, and field type definitions, by querying the registry and updating the internal dependency graph.",
-      "diff_hash": "5a23ffc6c428fb20c1a7477e4d3b9977"
+      "description": "Resolves all class dependencies, including imports, parent inheritance, and field types, by utilizing the registry resolver and updating the internal dependency graph.",
+      "diff_hash": "ee5ab173c88da842269382d221f9ce2d"
     },
     "src/tostr/core/models.py#BaseClass.skeletonize(...)": {
-      "description": "Generates a string representation of the class by replacing child member bodies with their signatures and descriptions, effectively creating a high-level skeleton of the class structure.",
-      "diff_hash": "65214968a8884222144e3457d8312a3d"
+      "description": "Generates a string representation of the class structure by replacing child nodes with their respective signatures and descriptions, requiring an associated AST node.",
+      "diff_hash": "862b39cb3e540ee05b7fb75d9b7687c8"
     },
     "src/tostr/core/models.py#BaseClass.to_dict(...)": {
       "description": "Serializes the class instance into a dictionary format, including type metadata, enum constants, and inheritance information.",
       "diff_hash": "c69b4a1c0415b0937a859092656db36e"
     },
     "src/tostr/core/models.py#BaseCodeStruct": {
-      "description": "Represents a structural metadata container for source code segments, capturing signature, body content, and line-range coordinates for indexing and LLM context management.",
-      "diff_hash": "a5eeedcda8f6e1a3d8b3f7d61d5fdc4f"
+      "description": "Represents a structural metadata container for source code units, capturing positional data, signatures, and raw content for AST-based analysis and LLM context management.",
+      "diff_hash": "176b3f2d70435e406dab4748d51663c1"
     },
     "src/tostr/core/models.py#BaseCodeStruct.to_dict(...)": {
       "description": "Serializes the instance into a dictionary, appending type-specific metadata including signature, body, and line boundaries to the base structure representation.",
@@ -574,12 +446,12 @@
       "diff_hash": "7949648423f0cfc32452a34555df1228"
     },
     "src/tostr/core/models.py#BaseFile": {
-      "description": "Represents a structured file entity within the system, extending BaseStruct to include source code metadata such as imports, package declarations, body content, and a diff hash for change tracking.",
-      "diff_hash": "34768842e377e8f79411a32e305f07cb"
+      "description": "Represents a source code file structure within a project hierarchy, encapsulating metadata such as package declarations, imports, source line bounds, and a diff hash for change tracking. It serves as a specialized node in the codebase model, providing a serialized representation of file-level attributes.",
+      "diff_hash": "429441098253317f328c1b6b0fe1ab6e"
     },
     "src/tostr/core/models.py#BaseFile.to_dict(...)": {
-      "description": "Serializes the file object into a dictionary, appending type metadata and specific file attributes including imports, body, diff_hash, and package.",
-      "diff_hash": "740a2fca36cf5ae7f01f1f3250eb5f24"
+      "description": "Serializes the file instance into a dictionary, augmenting the base structure with file-specific fields including imports, body content, line range, package name, and diff hash.",
+      "diff_hash": "a9940eae0669a058d84e40973bf2dd14"
     },
     "src/tostr/core/models.py#BaseMethod": {
       "description": "Represents a structural definition of a method within a codebase, managing dependency resolution and serialization metadata. It serves as a base class for tracking method arity, internal dependencies, and hierarchical relationships within a registry-managed environment.",
@@ -709,53 +581,25 @@
       "description": "Serializes the directory instance into a dictionary, appending type metadata and the current diff_hash to the base structure representation.",
       "diff_hash": "044217b5e71de0f83389ca3b45071c2d"
     },
-    "src/tostr/core/parser.py": {
-      "description": "An abstract base class providing a framework for parsing project directory structures, resolving dependencies, and generating semantic descriptions for files. It orchestrates the lifecycle of project indexing, including path traversal, language-specific file building, dependency resolution, and asynchronous LLM-based documentation generation.",
-      "diff_hash": "8b2297f39c97e0ef01c4acec8881a08b"
+    "src/tostr/core/paths.py": {
+      "description": "Manages and resolves standardized file system paths for a project, including configuration, ignore files, lock files, and internal cache directories.",
+      "diff_hash": "ad138743f5674181811f01e2201c56f6"
     },
-    "src/tostr/core/parser.py#BaseParser": {
-      "description": "An abstract base class providing a framework for parsing project directory structures, resolving dependencies, and generating semantic descriptions for files. It orchestrates the lifecycle of project indexing, including path traversal, language-specific file building, dependency resolution, and asynchronous LLM-based documentation generation.",
-      "diff_hash": "93607b1bb52c6a61e6f9ea85d26e7dc9"
+    "src/tostr/core/paths.py#ProjectPaths": {
+      "description": "Manages and resolves standardized file system paths for a project, including configuration, ignore files, lock files, and internal cache directories.",
+      "diff_hash": "375a6ebc0978844b055b71dd7408a7dd"
     },
-    "src/tostr/core/parser.py#BaseParser.__init__(...)": {
-      "description": "Initializes the parser with the project directory, optional LLM and embedder services, and a registry for managing parsed structures.",
-      "diff_hash": "141f6a90ccb77d99f5fe53768aa3edd5"
+    "src/tostr/core/paths.py#ProjectPaths.__init__(...)": {
+      "description": "Initializes the project path structure by defining standard locations for configuration, ignore rules, lock files, and the internal cache directory.",
+      "diff_hash": "26aa496cc3ade3205998779a862918c2"
     },
-    "src/tostr/core/parser.py#BaseParser._attach_parent_directory(...)": {
-      "description": "Re-links a standalone file into the project directory tree by recursively creating or stubbing parent directory objects to maintain structural integrity.",
-      "diff_hash": "62d454aa12fcaa8a2da5152de06971ca"
-    },
-    "src/tostr/core/parser.py#BaseParser.files(...)": {
-      "description": "Returns a list of all BaseFile instances currently stored in the registry.",
-      "diff_hash": "5be8e42b8a31570d812c0d8b9ff0d80f"
-    },
-    "src/tostr/core/parser.py#BaseParser.load_cache(...)": {
-      "description": "Loads the existing registry state from a persistent cache.",
-      "diff_hash": "09ab5a88141b8e94bb1665217b7f8b14"
-    },
-    "src/tostr/core/parser.py#BaseParser.parse(...)": {
-      "description": "Orchestrates the full parsing pipeline: traverses the path, resolves dependencies, carries over cached data, and triggers asynchronous description generation.",
-      "diff_hash": "96027714c1e1cede08a59bde7c7019bf"
-    },
-    "src/tostr/core/parser.py#BaseParser.parse_file(...)": {
-      "description": "Identifies and invokes the appropriate language-specific builder for a given file path, returning a BaseFile instance if supported.",
-      "diff_hash": "12ffe3318deb01eb2c6e244db11bab0a"
-    },
-    "src/tostr/core/parser.py#BaseParser.parse_path(...)": {
-      "description": "Recursively traverses the file system, applying ignore rules and populating the registry with Directory and File structures.",
-      "diff_hash": "50187dda1320f1da805d03b974507e7b"
-    },
-    "src/tostr/core/parser.py#BaseParser.resolve_dependencies(...)": {
-      "description": "Triggers the dependency resolution process starting from the project root.",
-      "diff_hash": "fa1689a876a5838b29819c9b908c5eb4"
-    },
-    "src/tostr/core/parser.py#BaseParser.resolve_descriptions_async(...)": {
-      "description": "Initializes the embedding service and executes a description pass over the project root using either an LLM or a fallback non-LLM describer.",
-      "diff_hash": "3e37a5c520d75638fce149e39760b951"
+    "src/tostr/core/paths.py#ProjectPaths.relative_to_project(...)": {
+      "description": "Computes the relative path of a given input path against the project root, falling back to OS-level relative path calculation if standard path resolution fails.",
+      "diff_hash": "952788fe0a352a0f93820a51d050d76e"
     },
     "src/tostr/core/providers.py": {
-      "description": "Provides centralized factory and registry mechanisms for language-specific processing components and LLM client strategies, facilitating decoupled instantiation and configuration management within the tostr core architecture.",
-      "diff_hash": "47351d2c8ee8df4b25582f9bbf3a724d"
+      "description": "Provides centralized factory infrastructure for the application, managing the instantiation of LLM client strategies and language-specific build components. It facilitates modularity by decoupling client configuration and language-specific logic from the core execution flow through dynamic resolution and registry management.",
+      "diff_hash": "b279d2bcab617cba77edd2468427b2f6"
     },
     "src/tostr/core/providers.py#LLMProvider": {
       "description": "Factory class responsible for resolving, configuring, and instantiating LLM client strategies based on project configuration and environment variables.",
@@ -774,8 +618,8 @@
       "diff_hash": "6cf2a6eb7b2851456579df54769e73bf"
     },
     "src/tostr/core/providers.py#LanguageProvider": {
-      "description": "Acts as a central factory and registry for language-specific components, mapping file extensions to their corresponding builders and dependency resolvers while enforcing language-mode constraints.",
-      "diff_hash": "191e8460c66adc1d37fb871b72585d5b"
+      "description": "Acts as a central factory and registry manager for language-specific build and dependency resolution components, mapping file extensions to their respective implementation classes via dynamic module loading.",
+      "diff_hash": "80a6acad9ba3273a909c1f338a556395"
     },
     "src/tostr/core/providers.py#LanguageProvider._language_enabled(...)": {
       "description": "Determines if a specific language is permitted based on the registry configuration, returning true if the mode is 'auto' or matches the target language.",
@@ -786,276 +630,12 @@
       "diff_hash": "b07f0539c817a29f80b049010b44d534"
     },
     "src/tostr/core/providers.py#LanguageProvider.get_resolver(...)": {
-      "description": "Instantiates and returns the appropriate dependency resolver for a given file extension, defaulting to a base resolver if no specific implementation exists.",
-      "diff_hash": "58426b2b9529f0bd1d3ec70a9e15c3d3"
+      "description": "Instantiates and returns the appropriate dependency resolver for a given file extension by dynamically importing the class defined in the language map, defaulting to a base no-op resolver if no specific mapping exists.",
+      "diff_hash": "b3e00abbc9e69f82d9933bc7a627a857"
     },
     "src/tostr/core/providers.py#LanguageProvider.language_for_extension(...)": {
       "description": "Maps a file extension string to its corresponding language identifier using a predefined extension map.",
       "diff_hash": "aeb7bca439aca4b18e05ef3b316ff20f"
-    },
-    "src/tostr/core/registry.py": {
-      "description": "Provides a centralized registry for managing project code structures, facilitating persistent storage via SQLite, dependency tracking, and efficient incremental indexing of code entities.",
-      "diff_hash": "6ac21a0d3c62ac88ce942819420cddfc"
-    },
-    "src/tostr/core/registry.py#Registry": {
-      "description": "The Registry class serves as the central in-memory and persistent cache manager for project code structures (structs). It orchestrates the lifecycle of code entities, handling their retrieval from SQLite, dependency resolution, and incremental updates. It maintains mappings between logical names, file paths, and unique identifiers, while providing mechanisms to prune stale data and carry over unchanged descriptions to optimize performance during re-indexing.",
-      "diff_hash": "287ba503b18b92fcfc5f3bbcaaad774a"
-    },
-    "src/tostr/core/registry.py#Registry.__init__(...)": {
-      "description": "Initializes the registry with optional caching, database connection, project configuration, and lockfile settings.",
-      "diff_hash": "d521fadf4ed8d8af54d00f4eea6ce208"
-    },
-    "src/tostr/core/registry.py#Registry._classes_matching_package(...)": {
-      "description": "Filters the in-memory class list to find those matching a specific package name.",
-      "diff_hash": "712994327122fde64fc1b55a7d978eed"
-    },
-    "src/tostr/core/registry.py#Registry._delete_struct_ids(...)": {
-      "description": "Deletes specified struct IDs along with their associated edges and vectors from the database.",
-      "diff_hash": "0039acd89b1634c131dbe5a6c17b3642"
-    },
-    "src/tostr/core/registry.py#Registry._enclosing_file_package(...)": {
-      "description": "Traverses the parent hierarchy of a struct to identify the package it belongs to.",
-      "diff_hash": "2307cdba08b4fb2dd1b6ad8165b901b5"
-    },
-    "src/tostr/core/registry.py#Registry._prune_file_path(...)": {
-      "description": "Removes structs from the database that are associated with a specific file path but are no longer present in the current parse.",
-      "diff_hash": "c904c87c1a628c411eaebd9354095deb"
-    },
-    "src/tostr/core/registry.py#Registry._resolve_logical_name(...)": {
-      "description": "Translates a dotted logical name (e.g., 'pkg.Class') into a physical path-based UID by searching through registered files and the database.",
-      "diff_hash": "569b3b82e5bc16aef3ed98d31d202649"
-    },
-    "src/tostr/core/registry.py#Registry._resolve_methods_recursive(...)": {
-      "description": "Recursively searches for methods within a struct and its inheritance hierarchy.",
-      "diff_hash": "758e4fe464d8203ca0c18c73aa05f3b1"
-    },
-    "src/tostr/core/registry.py#Registry.add_struct(...)": {
-      "description": "Registers a struct in the in-memory cache and updates the progress tracker for dependency resolution and description tasks.",
-      "diff_hash": "828bbab425b51a7a017e42ab5af0c437"
-    },
-    "src/tostr/core/registry.py#Registry.carry_over_unchanged(...)": {
-      "description": "Reuses cached descriptions and vectors for structs whose diff_hash remains unchanged, minimizing redundant LLM processing.",
-      "diff_hash": "4d26d707b6ce2587638528fcdb040e7f"
-    },
-    "src/tostr/core/registry.py#Registry.classes(...)": {
-      "description": "Returns a list of all registered BaseClass instances.",
-      "diff_hash": "bbae04cde8081058210f099567520062"
-    },
-    "src/tostr/core/registry.py#Registry.collect_descriptions(...)": {
-      "description": "Exports all valid, non-stale descriptions and optional vectors from the cache into a dictionary for lockfile serialization.",
-      "diff_hash": "f4e94e1822983e1d288e184aea682754"
-    },
-    "src/tostr/core/registry.py#Registry.delete_path_subtree(...)": {
-      "description": "Deletes all structs, edges, and vectors associated with a specific file or directory path from the database.",
-      "diff_hash": "f557485ce8c9c6a809351432da403614"
-    },
-    "src/tostr/core/registry.py#Registry.fields(...)": {
-      "description": "Returns a list of all registered BaseField instances.",
-      "diff_hash": "1d94d7f0fa9aea98a48523c54a45ef15"
-    },
-    "src/tostr/core/registry.py#Registry.files(...)": {
-      "description": "Returns a list of all registered BaseFile instances.",
-      "diff_hash": "3d229f43090eebdaaa48ebce10d6d378"
-    },
-    "src/tostr/core/registry.py#Registry.get_classes_in_package(...)": {
-      "description": "Retrieves all classes within a specified package, utilizing the database cache to find relevant files and class UIDs.",
-      "diff_hash": "152eab12d985230ce5e3f29d5e65b12a"
-    },
-    "src/tostr/core/registry.py#Registry.get_resolver(...)": {
-      "description": "Retrieves or initializes a language-specific dependency resolver based on the provided file extension.",
-      "diff_hash": "da28877e847ba43e9d28e6a8ece60df0"
-    },
-    "src/tostr/core/registry.py#Registry.get_struct_by_id(...)": {
-      "description": "Retrieves a struct by its unique database ID, performing a database lookup if the struct is not currently in the in-memory cache.",
-      "diff_hash": "f0fc395f0fcafa932837c06d661f15fb"
-    },
-    "src/tostr/core/registry.py#Registry.get_struct_by_uid(...)": {
-      "description": "Retrieves a struct by its UID, hydrating it from the database if necessary and resolving its children.",
-      "diff_hash": "b106a27df52a995593255c2d587e5849"
-    },
-    "src/tostr/core/registry.py#Registry.is_stale(...)": {
-      "description": "Determines if a struct is stale, defaulting to true if no database is available.",
-      "diff_hash": "851ac8aa3761382cd32e31980bca550a"
-    },
-    "src/tostr/core/registry.py#Registry.language(...)": {
-      "description": "Returns the programming language associated with the current project configuration.",
-      "diff_hash": "3e8b1a9e8dde8c0ffeaf01e8ed98d120"
-    },
-    "src/tostr/core/registry.py#Registry.load_filepath(...)": {
-      "description": "Loads all structs associated with a specific file path from the database into the registry.",
-      "diff_hash": "7fb05765c564b59d1a368fce908b91d1"
-    },
-    "src/tostr/core/registry.py#Registry.load_lockfile_lookup(...)": {
-      "description": "Loads the project's lockfile into memory to provide a secondary source for cached descriptions.",
-      "diff_hash": "1e0dcd5f418b618be2cba34495871e7c"
-    },
-    "src/tostr/core/registry.py#Registry.methods(...)": {
-      "description": "Returns a list of all registered BaseMethod instances.",
-      "diff_hash": "1bb4aba5bbc60090fafcd1624a4134be"
-    },
-    "src/tostr/core/registry.py#Registry.relative_to_project(...)": {
-      "description": "Converts an absolute file path into a path relative to the project root.",
-      "diff_hash": "6a955fb4cbfed821bce012b430bb1852"
-    },
-    "src/tostr/core/registry.py#Registry.resolve_methods(...)": {
-      "description": "Resolves methods by name and optional arity, optionally scoping the search to a specific parent class or package.",
-      "diff_hash": "257587c180eec1fd19d5950b82785fb4"
-    },
-    "src/tostr/core/registry.py#Registry.save_struct_to_cache(...)": {
-      "description": "Updates an existing struct's data and its associated edges in the persistent database.",
-      "diff_hash": "eb4ea9878f6a033cd024329a54b79e19"
-    },
-    "src/tostr/core/registry.py#Registry.save_to_cache(...)": {
-      "description": "Persists the current in-memory struct state to the database, optionally pruning paths to remove ghost entries.",
-      "diff_hash": "95584e2997c39024c7693bbcab98345f"
-    },
-    "src/tostr/core/registry.py#Registry.struct_exists(...)": {
-      "description": "Checks for the existence of a struct by UID, prioritizing the in-memory cache before querying the database.",
-      "diff_hash": "fbafacff0e98bbac17376a2c09003108"
-    },
-    "src/tostr/core/registry.py#Registry.update_cached_description(...)": {
-      "description": "Updates the description field for a specific struct in the persistent database.",
-      "diff_hash": "6946cdfba280ed4fcaae9b056d8305ab"
-    },
-    "src/tostr/core/registry.py#_deserialize_float32(...)": {
-      "description": "Converts a binary SQLite blob into a list of 32-bit floating-point numbers using the struct module, returning None if the input is null.",
-      "diff_hash": "33fe56be61267301ecafe4944717cbaa"
-    },
-    "src/tostr/core/resolver.py": {
-      "description": "Provides a hierarchical dependency resolution framework for mapping symbolic code references to concrete structural entities. The architecture utilizes a base engine, BaseDependencyResolver, to define core lookup strategies, which are then specialized for Java and Python ecosystems to handle language-specific scoping, import resolution, and artifact management requirements.",
-      "diff_hash": "c53b56d862faff25c9b9b6bc23551a76"
-    },
-    "src/tostr/core/resolver.py#BaseDependencyResolver": {
-      "description": "A specialized dependency resolution engine that maps symbolic references (types and methods) to concrete structural entities within a codebase registry. It implements multi-stage lookup strategies including local scope search, namespace-aware resolution, import-based resolution, and receiver-based heuristics to resolve complex cross-references in code structures.",
-      "diff_hash": "948570f6483499208deca0679ac1c301"
-    },
-    "src/tostr/core/resolver.py#BaseDependencyResolver.__init__(...)": {
-      "description": "Initializes the resolver with a registry instance and sets the default strict arity enforcement policy.",
-      "diff_hash": "a2de09707a958e1b3885ddb3005f2af8"
-    },
-    "src/tostr/core/resolver.py#BaseDependencyResolver._get_namespace(...)": {
-      "description": "Extracts the namespace (package or module path) for a given scope by checking explicit package attributes or traversing the parent hierarchy.",
-      "diff_hash": "0a5b03569b7df42a1d34ff8522add6b7"
-    },
-    "src/tostr/core/resolver.py#BaseDependencyResolver._get_potential_lookup_parents(...)": {
-      "description": "Aggregates a list of potential lookup locations for method resolution, including the current namespace, imported modules, and inherited class hierarchies.",
-      "diff_hash": "6348f275416bb6e7b95ea9c40355eab6"
-    },
-    "src/tostr/core/resolver.py#BaseDependencyResolver._resolve_receiver_type(...)": {
-      "description": "Determines the type of a receiver variable by inspecting parent class fields, global module imports, or method parameters.",
-      "diff_hash": "d73fc7e61739f6fadf018bfba2bdde90"
-    },
-    "src/tostr/core/resolver.py#BaseDependencyResolver._use_local_search(...)": {
-      "description": "Returns a boolean indicating whether local scope search should be performed for a given dependency.",
-      "diff_hash": "86c732abd60b358303991b98b0a0c5f4"
-    },
-    "src/tostr/core/resolver.py#BaseDependencyResolver.resolve_method_dependencies(...)": {
-      "description": "Orchestrates the resolution of method dependencies by applying a prioritized search: local scope, receiver-based type inference, and global import/inheritance lookups.",
-      "diff_hash": "21d0fbf00a531a12feee4a92bbfd3902"
-    },
-    "src/tostr/core/resolver.py#BaseDependencyResolver.resolve_type(...)": {
-      "description": "Resolves a type name to a struct by checking exact UIDs, namespace-prefixed names, and explicit or wildcard imports.",
-      "diff_hash": "0f85d7545259d816ee86435725e08105"
-    },
-    "src/tostr/core/resolver.py#JavaDependencyResolver": {
-      "description": "Specialized dependency resolution implementation for Java-based projects, extending BaseDependencyResolver to accommodate language-specific build system nuances and artifact management requirements.",
-      "diff_hash": "bac154295a8cddecb00f48d3d67b7914"
-    },
-    "src/tostr/core/resolver.py#PythonDependencyResolver": {
-      "description": "Specialized dependency resolver for Python codebases, extending BaseDependencyResolver to handle Python-specific scoping rules, including 'self'/'cls' references, field-based type resolution, and module-level import resolution.",
-      "diff_hash": "b0ac2ff598fdec1ddac2ec9c7500951d"
-    },
-    "src/tostr/core/resolver.py#PythonDependencyResolver.__init__(...)": {
-      "description": "Initializes the resolver with a registry and disables strict arity checking for Python-specific flexibility.",
-      "diff_hash": "8a764b59ab13648f791ff00c40db1b3e"
-    },
-    "src/tostr/core/resolver.py#PythonDependencyResolver._get_potential_lookup_parents(...)": {
-      "description": "Extends parent lookup paths by extracting module scopes from imports to facilitate resolution of free functions within the same module.",
-      "diff_hash": "49d05e40dae2d2555f8d20b1d1e6a3dd"
-    },
-    "src/tostr/core/resolver.py#PythonDependencyResolver._resolve_receiver_type(...)": {
-      "description": "Resolves the type of a receiver string by handling 'self'/'cls' keywords and inspecting parent class fields for attribute-based type inference.",
-      "diff_hash": "048449ee91a3439b820d22b0649e5ef4"
-    },
-    "src/tostr/core/resolver.py#PythonDependencyResolver._use_local_search(...)": {
-      "description": "Determines if local search is applicable based on the dependency tuple, returning true if the receiver is null or refers to local class instances ('self' or 'cls').",
-      "diff_hash": "89ef37d175a41d6bd61718df787ebd03"
-    },
-    "src/tostr/core/serializer.py": {
-      "description": "Defines core data structures and serialization utilities for representing hierarchical code analysis results. The module provides specialized containers (SkeletonResult, SearchResult, InspectResult) to encapsulate structural metadata, similarity metrics, and recursive tree representations, facilitating the transformation of complex code objects into standardized, traversable formats via the tost utility.",
-      "diff_hash": "fd817716513d35de3c105a5031f2a4cc"
-    },
-    "src/tostr/core/serializer.py#InspectResult": {
-      "description": "Represents a hierarchical metadata container for code analysis results, capturing structural information, relationships, and source code context for files, classes, and methods.",
-      "diff_hash": "e0577236431a1e32fcc3e72fa6a0d84c"
-    },
-    "src/tostr/core/serializer.py#SearchResult": {
-      "description": "Represents a structured data container for a single search result entry, encapsulating unique identifiers, result classification, and vector similarity metrics.",
-      "diff_hash": "7137f05cf05a727ef785dc743b7a0568"
-    },
-    "src/tostr/core/serializer.py#SkeletonResult": {
-      "description": "Represents a hierarchical node structure for skeleton-based data, facilitating recursive tree traversal and nested object representation through a self-referential children list.",
-      "diff_hash": "d5b6b5918d6de2c90899169f016931de"
-    },
-    "src/tostr/core/serializer.py#tost": {
-      "description": "Provides utility methods for serializing and traversing hierarchical code structures (BaseStruct) into simplified representations, supporting both lightweight skeleton generation and detailed inspection of code metadata.",
-      "diff_hash": "7eed776fd1235b502562dd66a7d6ee0e"
-    },
-    "src/tostr/core/serializer.py#tost.dump(...)": {
-      "description": "Serializes a BaseStruct into an InspectResult object, capturing metadata such as signatures, file paths, and dependency edges, with configurable recursion depth and optional inclusion of source code bodies.",
-      "diff_hash": "c1954175736107a6a437afd4867fb86b"
-    },
-    "src/tostr/core/serializer.py#tost.dump_skeleton(...)": {
-      "description": "Recursively traverses a BaseStruct hierarchy to generate a SkeletonResult tree, optionally filtering by file-only constraints and depth, while detecting circular directory references.",
-      "diff_hash": "51aeb2e98ef739d78016429970efb3bc"
-    },
-    "src/tostr/core/utils": {
-      "description": "Centralized utility layer providing observability and user feedback mechanisms, including a unified logging infrastructure with standard library interception and thread-safe progress tracking for long-running asynchronous tasks.",
-      "diff_hash": ""
-    },
-    "src/tostr/core/utils/logger.py": {
-      "description": "Provides a centralized logging infrastructure using Loguru, featuring a custom InterceptHandler to bridge standard Python logging and specialized configuration routines for both MCP server environments and CLI execution contexts.",
-      "diff_hash": "3aee99a7329b3cd760bc22cc4b1fb8c7"
-    },
-    "src/tostr/core/utils/logger.py#InterceptHandler": {
-      "description": "A custom logging handler that bridges standard Python logging to the Loguru framework, ensuring dependency logs are correctly routed and formatted to prevent interference with MCP stdio streams.",
-      "diff_hash": "2ec1e337e05318feb65c47fa36f385a4"
-    },
-    "src/tostr/core/utils/logger.py#InterceptHandler.emit(...)": {
-      "description": "Routes a LogRecord to Loguru by dynamically calculating the call stack depth to preserve original source file and line number context, while mapping standard logging levels to Loguru-compatible levels.",
-      "diff_hash": "5acf31f87e021cb3fe9bac45b085bce3"
-    },
-    "src/tostr/core/utils/logger.py#configure_cli_logging(...)": {
-      "description": "Configures global logging for CLI execution by removing existing handlers and optionally attaching stdout sinks for DEBUG or INFO level output based on the provided debug flag.",
-      "diff_hash": "5908f26d0963b03564945209875fa567"
-    },
-    "src/tostr/core/utils/logger.py#configure_mcp_logging(...)": {
-      "description": "Initializes the global logging system by creating a persistent log file in the project directory with rotation and retention policies, while intercepting standard library logs to ensure consistent formatting and thread-safe output.",
-      "diff_hash": "e6df130dc18a7fd14da3a7c22dcb1beb"
-    },
-    "src/tostr/core/utils/progress.py": {
-      "description": "Manages multi-stage progress tracking using the Rich library, providing thread-safe updates for dependency resolution, description, and embedding tasks.",
-      "diff_hash": "966618b273836a5cf80322e27181d600"
-    },
-    "src/tostr/core/utils/progress.py#ProgressTracker": {
-      "description": "Manages multi-stage progress tracking using the Rich library, providing thread-safe updates for dependency resolution, description, and embedding tasks.",
-      "diff_hash": "b89f649e3ec6a92d3116f8d4211ffe39"
-    },
-    "src/tostr/core/utils/progress.py#ProgressTracker.__init__(...)": {
-      "description": "Initializes the tracker with a Rich Progress instance and creates specific task bars based on enabled feature flags.",
-      "diff_hash": "fbcabe32de7b2a97f5f82a7f6f0b873a"
-    },
-    "src/tostr/core/utils/progress.py#ProgressTracker.advance(...)": {
-      "description": "Increments the completed count for the specified task type by the given amount in a thread-safe manner.",
-      "diff_hash": "6ec3ea6006a99425916281016e90e16e"
-    },
-    "src/tostr/core/utils/progress.py#ProgressTracker.enqueue(...)": {
-      "description": "Increments the total expected work units for a specific task type, effectively extending the progress bar's capacity.",
-      "diff_hash": "975ee0ad254c9ce32a0ee30beedfdb31"
-    },
-    "src/tostr/core/utils/progress.py#ProgressTracker.finish(...)": {
-      "description": "Completes all registered progress bars by advancing them to their respective total values.",
-      "diff_hash": "45f6b0ed244d50fbc02dea1a967a75b6"
     },
     "src/tostr/exceptions.py": {
       "description": "Defines the hierarchical exception framework for the Tostr library, establishing TostrError as the base class for all domain-specific errors. It provides specialized exception types for handling failures related to cache versioning, API authentication, resource location, and configuration validation, ensuring consistent error propagation and granular diagnostic reporting across the application.",
@@ -1081,25 +661,241 @@
       "description": "Serves as the root exception hierarchy for the Tostr domain, providing a unified base class for all custom error handling and exception propagation within the library.",
       "diff_hash": "fbde97dd21133c3e2033655c9286d9ab"
     },
+    "src/tostr/graph": {
+      "description": "Core infrastructure for project-wide structural analysis and dependency graph management. Orchestrates the lifecycle of code parsing, metadata hydration, and semantic indexing through a centralized registry. Provides robust mechanisms for resolving symbolic references to concrete structural UIDs and supports extensible parsing engines for building searchable, context-aware representations of the codebase.",
+      "diff_hash": ""
+    },
+    "src/tostr/graph/__init__.py": {
+      "description": "Package initialization module for the graph sub-package, exposing core abstractions including BaseParser, Registry, and BaseDependencyResolver to facilitate dependency graph management and parsing logic.",
+      "diff_hash": "96a12a10057acdacb7fed622f2096297"
+    },
+    "src/tostr/graph/parser.py": {
+      "description": "An abstract base class for project parsing engines that orchestrates the discovery, structural mapping, dependency resolution, and semantic description of source code files. It manages the lifecycle of project metadata by integrating with a registry, optional caching mechanisms, LLM-based description providers, and embedding services to build a searchable project representation.",
+      "diff_hash": "e751985dd80872ae0cc01e1b1f7e1648"
+    },
+    "src/tostr/graph/parser.py#BaseParser": {
+      "description": "An abstract base class for project parsing engines that orchestrates the discovery, structural mapping, dependency resolution, and semantic description of source code files. It manages the lifecycle of project metadata by integrating with a registry, optional caching mechanisms, LLM-based description providers, and embedding services to build a searchable project representation.",
+      "diff_hash": "450a2e154bca5686f483c578c60653e1"
+    },
+    "src/tostr/graph/parser.py#BaseParser.__init__(...)": {
+      "description": "Initializes the parser with the project directory, optional LLM/embedder services, a central registry for structural storage, and a cache manager for persistence.",
+      "diff_hash": "5d549ea96aced05fe2bafd81c7c4adb2"
+    },
+    "src/tostr/graph/parser.py#BaseParser._attach_parent_directory(...)": {
+      "description": "Re-links a standalone file into the project's directory hierarchy by recursively stubbing or creating parent directory structures to ensure the file remains connected to the project root.",
+      "diff_hash": "7743c97ffbd083bb0e994855f9411f85"
+    },
+    "src/tostr/graph/parser.py#BaseParser.files(...)": {
+      "description": "Retrieves a list of all file-type objects currently stored in the registry's UID map.",
+      "diff_hash": "5be8e42b8a31570d812c0d8b9ff0d80f"
+    },
+    "src/tostr/graph/parser.py#BaseParser.parse(...)": {
+      "description": "Executes the full parsing pipeline: traverses the file system, resolves dependencies, carries over cached data, and generates semantic descriptions for the project.",
+      "diff_hash": "6d6d9955607190dfa67a28116dbbee1c"
+    },
+    "src/tostr/graph/parser.py#BaseParser.parse_file(...)": {
+      "description": "Identifies and invokes the appropriate language-specific builder to instantiate a file object from a given path, returning None if no builder is registered or the path is ignored.",
+      "diff_hash": "12ffe3318deb01eb2c6e244db11bab0a"
+    },
+    "src/tostr/graph/parser.py#BaseParser.parse_path(...)": {
+      "description": "Recursively traverses the file system starting from a given path, creating directory and file structures in the registry while respecting ignore rules.",
+      "diff_hash": "324a9b1dc0fc7badca56b1db9b2270ac"
+    },
+    "src/tostr/graph/parser.py#BaseParser.resolve_dependencies(...)": {
+      "description": "Triggers the dependency resolution process starting from the registry root to establish inter-file relationships.",
+      "diff_hash": "fa1689a876a5838b29819c9b908c5eb4"
+    },
+    "src/tostr/graph/parser.py#BaseParser.resolve_descriptions_async(...)": {
+      "description": "Asynchronously generates semantic descriptions and embeddings for the project structure using either an LLM or a fallback describer, utilizing cache/lockfile data to optimize performance.",
+      "diff_hash": "aa6549e6edd0d5b59e28e719b80dae2d"
+    },
+    "src/tostr/graph/registry.py": {
+      "description": "Acts as the central in-memory repository for parsed and hydrated code structures, managing the object graph, dependency resolution providers, and project-wide configuration. It maintains distinct indexes for fresh and cached structs to ensure data integrity during incremental parsing and persistence operations.",
+      "diff_hash": "b26d8b7cfc0b8f453822724c67647e04"
+    },
+    "src/tostr/graph/registry.py#Registry": {
+      "description": "Acts as the central in-memory repository for parsed and hydrated code structures, managing the object graph, dependency resolution providers, and project-wide configuration. It maintains distinct indexes for fresh and cached structs to ensure data integrity during incremental parsing and persistence operations.",
+      "diff_hash": "680ae2a1702a04554ae5867cf5bbdf2e"
+    },
+    "src/tostr/graph/registry.py#Registry.__init__(...)": {
+      "description": "Initializes the registry with project paths, progress tracking, and configuration, setting up internal maps for parsed and hydrated structs.",
+      "diff_hash": "88c0be870eb38a842ab43a6d57d127f0"
+    },
+    "src/tostr/graph/registry.py#Registry._find_by_uid_or_suffix(...)": {
+      "description": "Performs a lookup for a struct by matching the exact UID or by treating the candidate as a trailing path segment.",
+      "diff_hash": "10570a6567637564a2543d6a306f0336"
+    },
+    "src/tostr/graph/registry.py#Registry.add_hydrated_struct(...)": {
+      "description": "Registers a struct sourced from the cache, making it available for lookups and resolution without triggering pipeline progress or write-back.",
+      "diff_hash": "cc86a65d5c84bbf958eb30a0e744bbd5"
+    },
+    "src/tostr/graph/registry.py#Registry.add_struct(...)": {
+      "description": "Registers a newly parsed struct and enqueues its associated pipeline tasks (resolution, description, embedding) in the progress tracker.",
+      "diff_hash": "728abee539d7aa4dd8585b7a42e6d68c"
+    },
+    "src/tostr/graph/registry.py#Registry.classes(...)": {
+      "description": "Returns a list of all registered structs that are instances of BaseClass.",
+      "diff_hash": "bbae04cde8081058210f099567520062"
+    },
+    "src/tostr/graph/registry.py#Registry.evict_hydrated_path(...)": {
+      "description": "Removes all hydrated structs associated with a specific file path to prevent stale data from interfering with re-parsing.",
+      "diff_hash": "55c9dfb20e85cd2f427ebcf4a42c946d"
+    },
+    "src/tostr/graph/registry.py#Registry.fields(...)": {
+      "description": "Returns a list of all registered structs that are instances of BaseField.",
+      "diff_hash": "1d94d7f0fa9aea98a48523c54a45ef15"
+    },
+    "src/tostr/graph/registry.py#Registry.files(...)": {
+      "description": "Returns a list of all registered structs that are instances of BaseFile.",
+      "diff_hash": "3d229f43090eebdaaa48ebce10d6d378"
+    },
+    "src/tostr/graph/registry.py#Registry.get_resolver(...)": {
+      "description": "Retrieves or creates a language-specific dependency resolver based on the provided file extension.",
+      "diff_hash": "da28877e847ba43e9d28e6a8ece60df0"
+    },
+    "src/tostr/graph/registry.py#Registry.get_struct_by_id(...)": {
+      "description": "Retrieves a struct by its internal ID from the global ID map.",
+      "diff_hash": "11580d613c424dd340b81ffacc08822f"
+    },
+    "src/tostr/graph/registry.py#Registry.get_struct_by_uid(...)": {
+      "description": "Retrieves a struct by its unique identifier, checking the parsed map first, then the hydrated map.",
+      "diff_hash": "fbb2b9a675ac895292791f55c267d0e1"
+    },
+    "src/tostr/graph/registry.py#Registry.language(...)": {
+      "description": "Returns the configured programming language, defaulting to 'java' if not specified.",
+      "diff_hash": "3e8b1a9e8dde8c0ffeaf01e8ed98d120"
+    },
+    "src/tostr/graph/registry.py#Registry.methods(...)": {
+      "description": "Returns a list of all registered structs that are instances of BaseMethod.",
+      "diff_hash": "1bb4aba5bbc60090fafcd1624a4134be"
+    },
+    "src/tostr/graph/registry.py#Registry.project_path(...)": {
+      "description": "Returns the project root path from the associated path configuration.",
+      "diff_hash": "96c369a69a43a623476f58822a3d3d3c"
+    },
+    "src/tostr/graph/registry.py#Registry.resolve_import(...)": {
+      "description": "Resolves an import candidate to a struct using exact UID matching, path-suffix matching, or a fallback search for uniquely named definitions within the project.",
+      "diff_hash": "533a9c86272b259479cd0776baa44f25"
+    },
+    "src/tostr/graph/registry.py#Registry.uid_map(...)": {
+      "description": "Provides a read-only merged view of all parsed and hydrated structs, prioritizing parsed versions in case of UID collisions.",
+      "diff_hash": "55fc13da8ec2738b804456b871fd6253"
+    },
+    "src/tostr/graph/resolver.py": {
+      "description": "Resolves symbolic type and method references to concrete structural UIDs within an AST graph. It leverages a registry of normalized import candidates and inheritance chains to perform context-aware lookups, supporting both direct UID resolution and heuristic-based matching for method calls and class instantiations.",
+      "diff_hash": "460003d21b00a3ea95334af527392bdc"
+    },
+    "src/tostr/graph/resolver.py#BaseDependencyResolver": {
+      "description": "Resolves symbolic type and method references to concrete structural UIDs within an AST graph. It leverages a registry of normalized import candidates and inheritance chains to perform context-aware lookups, supporting both direct UID resolution and heuristic-based matching for method calls and class instantiations.",
+      "diff_hash": "e8611429f7f1e36ebf3da36718dd53a8"
+    },
+    "src/tostr/graph/resolver.py#BaseDependencyResolver.__init__(...)": {
+      "description": "Initializes the resolver with a registry of known structs and sets the strict arity enforcement flag.",
+      "diff_hash": "a2de09707a958e1b3885ddb3005f2af8"
+    },
+    "src/tostr/graph/resolver.py#BaseDependencyResolver._descendants(...)": {
+      "description": "Traverses the AST from a given struct to collect all nested descendant nodes.",
+      "diff_hash": "e270f4c75462cd9b541321dd254cb4f5"
+    },
+    "src/tostr/graph/resolver.py#BaseDependencyResolver._enclosing_file(...)": {
+      "description": "Walks up the AST parent chain to identify the enclosing file struct for a given node.",
+      "diff_hash": "be4de529794f53833ae94a2713151a6c"
+    },
+    "src/tostr/graph/resolver.py#BaseDependencyResolver._find_named_class(...)": {
+      "description": "Searches the descendants of a scope to find a class matching the specified name.",
+      "diff_hash": "297eb94fc730f203277eb02452eb52f8"
+    },
+    "src/tostr/graph/resolver.py#BaseDependencyResolver._get_potential_lookup_parents(...)": {
+      "description": "Aggregates a list of potential scope UIDs (enclosing file, imports, and inheritance parents) to search for method definitions.",
+      "diff_hash": "b14e8074599f4be53cb271ccdff68dac"
+    },
+    "src/tostr/graph/resolver.py#BaseDependencyResolver._imported_name(...)": {
+      "description": "Extracts the bare symbol name from an import string, stripping callable markers and path prefixes.",
+      "diff_hash": "25a75057d48e745eaf1cf68068f56565"
+    },
+    "src/tostr/graph/resolver.py#BaseDependencyResolver._is_method_match(...)": {
+      "description": "Validates if a struct is a method and matches the provided name and optional arity.",
+      "diff_hash": "6afb5e641e55e675a9689dd05a5b70e3"
+    },
+    "src/tostr/graph/resolver.py#BaseDependencyResolver._resolve_methods_recursive(...)": {
+      "description": "Recursively searches for a method within a struct and its inheritance hierarchy, tracking visited UIDs to prevent infinite loops.",
+      "diff_hash": "3174aa12940e28d1506a5998a82d026d"
+    },
+    "src/tostr/graph/resolver.py#BaseDependencyResolver._resolve_receiver_type(...)": {
+      "description": "Identifies the type or scope UID associated with a method receiver by inspecting parent fields or module-level imports.",
+      "diff_hash": "cf79de78d8273d4653d597f4e3cb23b0"
+    },
+    "src/tostr/graph/resolver.py#BaseDependencyResolver._scope_imports(...)": {
+      "description": "Retrieves the list of import candidates applicable to a given scope by checking the scope itself or its parent.",
+      "diff_hash": "1f028f8cad255f329f83770e4125c560"
+    },
+    "src/tostr/graph/resolver.py#BaseDependencyResolver._simple_name(...)": {
+      "description": "Normalizes a type reference string by stripping generic/array syntax and extracting the final identifier segment.",
+      "diff_hash": "16f3684015444fd3c3c934c928adb33a"
+    },
+    "src/tostr/graph/resolver.py#BaseDependencyResolver._use_local_search(...)": {
+      "description": "Determines if local scope search should be performed for a given dependency.",
+      "diff_hash": "86c732abd60b358303991b98b0a0c5f4"
+    },
+    "src/tostr/graph/resolver.py#BaseDependencyResolver.resolve_method_dependencies(...)": {
+      "description": "Orchestrates the dependency resolution process for a given method by attempting local scope search, receiver-based heuristic matching, and global import/inheritance lookups.",
+      "diff_hash": "711cfaef26df93982875ea77c9ac0238"
+    },
+    "src/tostr/graph/resolver.py#BaseDependencyResolver.resolve_methods(...)": {
+      "description": "Locates methods matching a specific name and arity within a defined scope UID, or globally if no parent scope is provided.",
+      "diff_hash": "f5a5c54704c7118a875a81c941b2d14c"
+    },
+    "src/tostr/graph/resolver.py#BaseDependencyResolver.resolve_type(...)": {
+      "description": "Resolves a type name to a concrete struct UID by checking direct registry lookups, local file scope, and import candidates.",
+      "diff_hash": "50f1b3bb3ac4297f4bab14d53d1bbd1c"
+    },
     "src/tostr/languages": {
-      "description": "Language-specific infrastructure for the tostr framework, providing modular implementations for Python and Java. Each module leverages tree-sitter for AST-based parsing, structural transformation, and canonical entity extraction. These components are responsible for normalizing language-specific semantics—such as inheritance, type resolution, and member discovery—to ensure stable UID generation and consistent cross-reference indexing across the codebase.",
+      "description": "Language-specific transformation layers for the tostr framework, providing specialized AST parsing, dependency resolution, and code generation logic for HTML, Python, and Java. Each module encapsulates language-aware builders that normalize syntax, manage structural mappings, and ensure cross-reference integrity during the conversion of tree-sitter nodes into target source code or markup.",
       "diff_hash": ""
     },
     "src/tostr/languages/__init__.py": {
       "description": "Empty File",
       "diff_hash": "5de1980dee48c44fc3e850f3a8b673f6"
     },
+    "src/tostr/languages/html": {
+      "description": "Implements HTML-specific document generation logic within the tostr framework. Orchestrates the transformation of AST nodes into structured HTML files, providing both atomic content processing via HtmlBuilder and lifecycle-managed file generation with integrity hashing via HtmlFileBuilder.",
+      "diff_hash": ""
+    },
+    "src/tostr/languages/html/__init__.py": {
+      "description": "Exposes the HtmlBuilder and HtmlFileBuilder classes from the builders module, serving as the primary entry point for the HTML generation package within the tostr framework.",
+      "diff_hash": "1fd0f1a22efc41a045828bd14d41ac41"
+    },
+    "src/tostr/languages/html/builders.py": {
+      "description": "Provides specialized builder implementations for HTML documents within the tostr framework. HtmlFileBuilder manages the lifecycle of HTML file objects, including integrity hashing and AST node generation, while HtmlBuilder provides a simplified, atomic processing interface for HTML content that bypasses granular dependency resolution.",
+      "diff_hash": "ec75d3c282c7f6d1a8a47854f2cb1bea"
+    },
+    "src/tostr/languages/html/builders.py#HtmlBuilder": {
+      "description": "Specialized builder for HTML documents that treats files as atomic units without structural decomposition into functions or classes, utilizing a no-op dependency resolver.",
+      "diff_hash": "a33926ebf3b60711c434210a72de1748"
+    },
+    "src/tostr/languages/html/builders.py#HtmlBuilder.build_file(...)": {
+      "description": "Instantiates and returns an HtmlFileBuilder configured with the current registry to process the HTML file structure.",
+      "diff_hash": "758a1ad58c1ac33ef7a4d826b8d88d74"
+    },
+    "src/tostr/languages/html/builders.py#HtmlFileBuilder": {
+      "description": "Specialized file builder for HTML documents that extends BaseFileBuilder to populate file objects with parsed content, MD5 integrity hashes, and tree-sitter AST nodes for structural analysis.",
+      "diff_hash": "3fa3216580ce351f3e83b1a19fc8faf5"
+    },
+    "src/tostr/languages/html/builders.py#HtmlFileBuilder.from_path(...)": {
+      "description": "Constructs a BaseFile instance from a filesystem path by reading the file content, generating an MD5 hash, and initializing a tree-sitter AST node for HTML structure parsing.",
+      "diff_hash": "638e33880f9ea89e0b52ca855696bf48"
+    },
     "src/tostr/languages/java": {
-      "description": "Java-specific language implementation for the tostr system, providing tree-sitter based parsing and structural transformation. Orchestrates the extraction of Java source code entities—including classes, enums, methods, and fields—into canonical, UID-stable representations. Manages language-specific semantics such as inheritance resolution, member discovery, and type normalization to support cross-reference stability and method overloading.",
+      "description": "Encapsulates the Java language support layer, providing a robust framework for AST-based code generation and dependency resolution. It leverages a suite of builder classes to transform tree-sitter nodes into structured Java components (classes, methods, fields, enums) while maintaining package normalization and cross-reference integrity through a specialized dependency resolver.",
       "diff_hash": ""
     },
     "src/tostr/languages/java/__init__.py": {
-      "description": "Empty File",
-      "diff_hash": "a527cd4906e6e294de87d3cb4901231d"
+      "description": "Initializes the Java language module by exposing core builder classes (JavaBuilder, JavaFileBuilder, JavaClassBuilder, JavaMethodBuilder, JavaFieldBuilder, JavaEnumBuilder) and the JavaDependencyResolver for structured Java code generation and dependency management.",
+      "diff_hash": "20543d7fc09c90ea3e1fc84c2e50a104"
     },
     "src/tostr/languages/java/builders.py": {
-      "description": "Implements a specialized Java language parsing and building framework for the tostr system. It leverages tree-sitter to transform Java source code into structured representations (files, classes, enums, methods, fields) while enforcing canonical UID generation for cross-reference stability. The module provides a centralized factory (JavaBuilder) and specific builder classes that handle Java-specific semantics, including inheritance, member discovery, and type normalization for method overloading.",
-      "diff_hash": "3daeb0dadeb161873398fad72ff0ab8a"
+      "description": "Provides a comprehensive suite of builder classes for parsing and structuring Java source code using tree-sitter. The module facilitates the transformation of AST nodes into standardized representations (files, classes, methods, fields, enums) while managing dependency tracking, package normalization, and UID generation for cross-referencing.",
+      "diff_hash": "4a302c796f16f604e92adfef2215b0e8"
     },
     "src/tostr/languages/java/builders.py#JavaBuilder": {
       "description": "A factory class extending BaseBuilder that provides specialized builder instances for constructing Java source code components, including files, classes, methods, and fields, utilizing a shared registry for state management.",
@@ -1122,12 +918,12 @@
       "diff_hash": "2cf506392a6a19797fd2d488ca81c0a7"
     },
     "src/tostr/languages/java/builders.py#JavaClassBuilder": {
-      "description": "Specialized builder for parsing Java class declarations from tree-sitter nodes into structured BaseClass objects, handling inheritance, modifiers, and nested member discovery.",
-      "diff_hash": "fc1036b26911d4dbc2d1c2151afaf037"
+      "description": "Specialized builder class for parsing Java class declarations from tree-sitter nodes into structured BaseClass objects, handling inheritance, modifiers, and nested member discovery.",
+      "diff_hash": "4d4ebdd4ad1b59e78b25494ee4fde31f"
     },
     "src/tostr/languages/java/builders.py#JavaClassBuilder.from_node(...)": {
-      "description": "Parses a Java class node to extract metadata, signature, and inheritance details, then recursively processes the class body to register nested members such as methods, fields, and inner classes.",
-      "diff_hash": "9999095e834a01898a173e773cd210f3"
+      "description": "Parses a Java class declaration node to construct a BaseClass instance, extracting metadata such as modifiers, type parameters, and inheritance relationships, then recursively processes the class body to register nested members.",
+      "diff_hash": "b63351b22b2044cba5dd4a49ff713747"
     },
     "src/tostr/languages/java/builders.py#JavaEnumBuilder": {
       "description": "A specialized builder for constructing Java enum representations from source code nodes, extending the base Java class construction logic.",
@@ -1138,28 +934,32 @@
       "diff_hash": "ce3b80d8087aa60e7588546a236dfe35"
     },
     "src/tostr/languages/java/builders.py#JavaFieldBuilder": {
-      "description": "Specialized field builder for Java source code that parses AST nodes to extract field metadata, including modifiers, types, and identifiers, while constructing a unique hierarchical identifier for the field.",
-      "diff_hash": "0a5a6eac42fd9e5e25641eb363e9f2e2"
+      "description": "A specialized field builder for Java source code that parses AST nodes into structured BaseField objects, extracting modifiers, types, and identifiers to generate unique signatures and metadata.",
+      "diff_hash": "a10ae0d5de7521c3b40d167623c01c25"
     },
     "src/tostr/languages/java/builders.py#JavaFieldBuilder.from_node(...)": {
-      "description": "Parses a Java field AST node to extract modifiers, type, and name, returning a BaseField instance populated with the field's signature, body, line range, and a unique identifier derived from its parent context.",
-      "diff_hash": "fb3b001c6cf2f12c2b8ff6ebc43999e1"
+      "description": "Parses a Java field AST node to construct a BaseField instance, extracting modifiers, type, and name to build a canonical signature and unique identifier based on the parent context.",
+      "diff_hash": "4b5a1980dbe74610439dca4354ab9941"
     },
     "src/tostr/languages/java/builders.py#JavaFileBuilder": {
-      "description": "Specialized file builder for Java source files that parses file content into a structured representation using tree-sitter, extracting package information, imports, and top-level class, interface, enum, method, and field declarations.",
-      "diff_hash": "032122a14c6fa870e31444f0cc193f80"
+      "description": "Specializes in parsing and constructing Java source file representations from filesystem paths using tree-sitter for structural analysis. It extracts package declarations, imports, and top-level code constructs like classes, interfaces, enums, and methods, registering them into a central registry.",
+      "diff_hash": "665409d1eaefdc39155b789dbca26102"
     },
     "src/tostr/languages/java/builders.py#JavaFileBuilder.from_path(...)": {
-      "description": "Constructs a BaseFile object from a Java source file path by reading the file content, calculating its MD5 hash, parsing the AST via tree-sitter, and recursively building child structures (classes, methods, fields, enums) while registering them in the registry.",
-      "diff_hash": "9e8f2dfd166176fccec1749e6a242256"
+      "description": "Reads a Java source file, computes its MD5 hash, parses the AST via tree-sitter, and recursively populates the file object with metadata, imports, and child structural elements by delegating to specialized builders.",
+      "diff_hash": "444dab93652aa2a603b037da4285f1a3"
     },
     "src/tostr/languages/java/builders.py#JavaMethodBuilder": {
-      "description": "A specialized builder for Java method structures that parses tree-sitter nodes into structured BaseMethod objects, handling signature generation, parameter normalization for UID calculation, and dependency extraction.",
-      "diff_hash": "bc53693c290482604c10d73a83435280"
+      "description": "A specialized builder class for parsing Java method AST nodes into structured BaseMethod objects, handling signature extraction, parameter normalization for UID generation, and dependency tracking.",
+      "diff_hash": "989fc8bdc994ab6aa085b8f373df01c9"
     },
     "src/tostr/languages/java/builders.py#JavaMethodBuilder.from_node(...)": {
-      "description": "Parses a Java method node to construct a BaseMethod instance, generating a stable UID based on normalized parameter types, extracting method dependencies via tree-sitter queries, and calculating metadata including signature, arity, and source code hash.",
-      "diff_hash": "4288b60624b6c6e55bb2e815f4370211"
+      "description": "Parses a Java method AST node to construct a BaseMethod instance, extracting metadata including modifiers, type parameters, normalized parameter types for unique identification, and internal method call dependencies.",
+      "diff_hash": "c7acc6499d1c2a37dedb1b4031b387e7"
+    },
+    "src/tostr/languages/java/builders.py#_java_import_candidates(...)": {
+      "description": "Generates a list of path-formatted UID candidates from a Java import FQN, mapping wildcard package imports to directory-scope markers and specific type imports to file-member UIDs.",
+      "diff_hash": "e477e5a95fdd8c085d7ffbe3c56e7892"
     },
     "src/tostr/languages/java/builders.py#_normalize_java_param_type(...)": {
       "description": "Canonicalizes a raw Java type string into a stable, erased form suitable for UID generation by stripping generics, converting varargs to arrays, collapsing whitespace, and removing package qualifiers.",
@@ -1169,17 +969,25 @@
       "description": "Extracts the simple class name from a fully qualified Java type by identifying the first uppercase-initial segment, effectively stripping package prefixes while preserving nested class structures.",
       "diff_hash": "8a882503accecc08c5a93ac2a77d9ffe"
     },
+    "src/tostr/languages/java/resolver.py": {
+      "description": "Specialized dependency resolver for Java projects that extends BaseDependencyResolver to leverage inherited scope-struct logic for artifact resolution.",
+      "diff_hash": "af9fead53df0757d611a6f38e658a09b"
+    },
+    "src/tostr/languages/java/resolver.py#JavaDependencyResolver": {
+      "description": "Specialized dependency resolver for Java projects that extends BaseDependencyResolver to leverage inherited scope-struct logic for artifact resolution.",
+      "diff_hash": "9d432f50de56244ebf181b50202e4c86"
+    },
     "src/tostr/languages/python": {
-      "description": "Encapsulates Python-specific language support for the tostr framework, providing the infrastructure for AST-based code analysis, structural transformation, and metadata extraction. It defines the core logic for parsing Python source code via tree-sitter, managing hierarchical code representations, and resolving cross-reference dependencies for downstream indexing and UID generation.",
+      "description": "Encapsulates the Python-specific implementation of the tostr code generation framework, providing AST builders, dependency resolution logic, and structural mapping for Python source code. It handles the transformation of tree-sitter nodes into language-aware representations, manages Python-specific syntax nuances like 'self'/'cls' references, and normalizes import paths to support robust cross-reference resolution and project-wide analysis.",
       "diff_hash": ""
     },
     "src/tostr/languages/python/__init__.py": {
-      "description": "Empty File",
-      "diff_hash": "198c3f02add4071d21b273c729e2d1a5"
+      "description": "Initializes the Python language module for the tostr framework, exposing core code generation components including PythonBuilder, file/class/method/field builders, and the PythonDependencyResolver for managing code structure and dependencies.",
+      "diff_hash": "1763d0b3c667cb28785065bfae5d534f"
     },
     "src/tostr/languages/python/builders.py": {
-      "description": "Provides a specialized hierarchy of builder classes for transforming Python AST nodes into structured code representations. The module leverages tree-sitter parsing to extract metadata for files, classes, methods, and fields, facilitating dependency resolution, UID generation, and hierarchical mapping within the tostr framework.",
-      "diff_hash": "25a4dbec5f761e99aaf9e02ff5b7a635"
+      "description": "Implements language-specific AST builders for Python, extending the base framework to transform tree-sitter nodes into structured representations of files, classes, methods, and fields. The module provides specialized logic for Python-specific syntax, including inheritance resolution, UID generation, and import path normalization to facilitate cross-reference resolution within the project structure.",
+      "diff_hash": "e0f70db83d74e29ba53b326dd4e4b5d8"
     },
     "src/tostr/languages/python/builders.py#PythonBuilder": {
       "description": "A factory class extending BaseBuilder that provides specialized builder instances for constructing Python-specific code structures including files, classes, methods, and fields using a shared registry.",
@@ -1202,24 +1010,24 @@
       "diff_hash": "0001ce16b13fd5647d4bee6274fc4641"
     },
     "src/tostr/languages/python/builders.py#PythonClassBuilder": {
-      "description": "Specialized builder for constructing BaseClass instances from Python AST nodes, handling class inheritance, unique identifier generation, and recursive parsing of class body members.",
-      "diff_hash": "edd9213f690cd2750bc7e905873b89c4"
+      "description": "Constructs BaseClass instances from tree-sitter Python class nodes, handling inheritance extraction, UID generation based on parent hierarchy, and recursive child parsing.",
+      "diff_hash": "3efd0a444fc2ea7d8bc2965828c06a4f"
     },
     "src/tostr/languages/python/builders.py#PythonClassBuilder.from_node(...)": {
-      "description": "Parses a Python class AST node to instantiate a BaseClass, extracting the class name, inheritance list, and signature while recursively populating child members via PythonFileBuilder.",
-      "diff_hash": "9662eefd0bab758580b845cb27c8a81f"
+      "description": "Parses a tree-sitter class node to instantiate a BaseClass, extracting the class name, inheritance list, and source body, while recursively populating child members via PythonFileBuilder.",
+      "diff_hash": "9cb245e97e5549f52c1de84eea716b0d"
     },
     "src/tostr/languages/python/builders.py#PythonFieldBuilder": {
-      "description": "Constructs BaseField instances from Python AST nodes, specifically targeting assignment expressions to extract field metadata such as name, type, and hierarchical UID.",
-      "diff_hash": "f7ef092d99c9cfb7c851b10734b5cc72"
+      "description": "Specialized builder for extracting and instantiating field definitions from Python source code nodes, mapping assignment expressions to structured BaseField objects.",
+      "diff_hash": "85a34dbe470bfb95dcec0c163aab4bbc"
     },
     "src/tostr/languages/python/builders.py#PythonFieldBuilder.from_node(...)": {
-      "description": "Parses a Python AST node to extract field identifiers and type annotations, returning a configured BaseField object with calculated metadata, unique identifiers, and source code context.",
-      "diff_hash": "50bea7eb01bbeba3317c3b42e4c56ad1"
+      "description": "Parses a Python AST node representing an assignment to extract field metadata, including name, type, and source bounds, and returns a fully initialized BaseField instance.",
+      "diff_hash": "9c507202cca121928a0f7f4cbe03aa03"
     },
     "src/tostr/languages/python/builders.py#PythonFileBuilder": {
-      "description": "A specialized file builder for Python source code that parses files into structured representations, resolves module paths, extracts imports, and normalizes aliased dependencies. It orchestrates a multi-phase parsing process including AST node traversal, child structure instantiation (classes, methods, fields), and dependency alias resolution.",
-      "diff_hash": "c46b342e0ce8f95b61e91f84a6ab6839"
+      "description": "A specialized file builder for Python source code that parses files into structured objects, resolves module imports, handles aliased symbols, and recursively builds child structures from the AST.",
+      "diff_hash": "2bf7612d4835413d0aaeaec0c39f48f3"
     },
     "src/tostr/languages/python/builders.py#PythonFileBuilder._normalize_deps(...)": {
       "description": "Recursively traverses a structure to replace aliased dependency names with their original UIDs within method dependency lists.",
@@ -1230,23 +1038,131 @@
       "diff_hash": "c6c3dfef8d5d8409f0fe85acb414e791"
     },
     "src/tostr/languages/python/builders.py#PythonFileBuilder.from_path(...)": {
-      "description": "Constructs a BaseFile object from a file path by reading content, parsing the AST, resolving the logical module package, extracting imports, and performing multi-phase dependency normalization.",
-      "diff_hash": "8360c78032b66e9327d0ab77af212e5d"
+      "description": "Constructs a BaseFile object from a Python source file by reading content, calculating metadata, parsing the AST, resolving absolute and relative imports, and normalizing aliased dependencies.",
+      "diff_hash": "dddd8354c01bdcbecb92d74e4c145cf7"
     },
     "src/tostr/languages/python/builders.py#PythonMethodBuilder": {
-      "description": "Specializes in parsing Python function and method definitions from tree-sitter nodes into structured BaseMethod objects. It handles signature extraction, parameter normalization for UID generation, and dependency discovery within the method body.",
-      "diff_hash": "cb4410f93148bee430ffe997b22757b0"
+      "description": "Specialized builder for parsing Python method definitions from tree-sitter nodes, responsible for extracting metadata, calculating unique identifiers, and identifying internal dependencies.",
+      "diff_hash": "fd693607fd09ca428f55b4af950d9a82"
     },
     "src/tostr/languages/python/builders.py#PythonMethodBuilder.from_node(...)": {
-      "description": "Parses a Python method node to extract metadata including name, signature, arity, and internal dependencies, returning a fully initialized BaseMethod instance.",
-      "diff_hash": "5df02c621b06fdc44a323be4651671ee"
+      "description": "Parses a tree-sitter node into a BaseMethod object by extracting the method name, signature, and arity, while generating a stable UID and identifying external method calls for dependency tracking.",
+      "diff_hash": "193c9183d4a0e515f903574ec1695003"
+    },
+    "src/tostr/languages/python/builders.py#_anchor_prefix(...)": {
+      "description": "Infers the source-root directory prefix for an absolute import by locating the first segment of the module path within the directory structure of the importing file.",
+      "diff_hash": "cb6dbf3787f9425e7337481fa54e8b97"
+    },
+    "src/tostr/languages/python/builders.py#_member_candidates(...)": {
+      "description": "Constructs a list of potential UID candidates for a member imported from a module, generating both standard and callable-signature variants for each possible module file path.",
+      "diff_hash": "258ef6e75681664a2b2d33a6276885ee"
+    },
+    "src/tostr/languages/python/builders.py#_module_scope_candidates(...)": {
+      "description": "Generates a list of potential file-system paths for a given dotted module string, optionally prepending an anchor path to support heuristic-based resolution of source roots.",
+      "diff_hash": "a1c2f0b782d16470d48618219dbcb721"
+    },
+    "src/tostr/languages/python/resolver.py": {
+      "description": "Specializes dependency resolution for Python-specific syntax, handling 'self' and 'cls' references within class methods to map receivers to their corresponding type UIDs.",
+      "diff_hash": "5f38774df4b2b60f788302083722909c"
+    },
+    "src/tostr/languages/python/resolver.py#PythonDependencyResolver": {
+      "description": "Specializes dependency resolution for Python-specific syntax, handling 'self' and 'cls' references within class methods to map receivers to their corresponding type UIDs.",
+      "diff_hash": "7d035a45f28c99dffc0f9f01573a03af"
+    },
+    "src/tostr/languages/python/resolver.py#PythonDependencyResolver.__init__(...)": {
+      "description": "Initializes the resolver with a registry and sets the strict_arity flag to false for Python-specific flexibility.",
+      "diff_hash": "8a764b59ab13648f791ff00c40db1b3e"
+    },
+    "src/tostr/languages/python/resolver.py#PythonDependencyResolver._resolve_receiver_type(...)": {
+      "description": "Resolves the type UID of a receiver string by identifying 'self'/'cls' references or traversing parent class fields for attribute-based lookups.",
+      "diff_hash": "048449ee91a3439b820d22b0649e5ef4"
+    },
+    "src/tostr/languages/python/resolver.py#PythonDependencyResolver._use_local_search(...)": {
+      "description": "Determines if local search is applicable for a dependency by checking if the receiver is absent or refers to 'self' or 'cls'.",
+      "diff_hash": "89ef37d175a41d6bd61718df787ebd03"
     },
     "src/tostr/semantic": {
-      "description": "Centralizes semantic processing capabilities, providing a unified abstraction layer for LLM interactions and high-performance vector embedding generation. The architecture decouples model-specific implementations from core business logic, facilitating scalable, asynchronous workflows for structured text generation, tokenization, and vector refinement through standardized interfaces and resilient execution patterns.",
+      "description": "Core semantic analysis layer providing infrastructure for LLM-based code interpretation and high-performance vector embedding generation. Orchestrates asynchronous workflows for structural codebase description, leveraging modular provider strategies for LLM interaction and hardware-accelerated ONNX inference for vectorization. Facilitates standardized semantic metadata extraction through a unified interface that balances intelligent generative analysis with lightweight structural serialization.",
       "diff_hash": ""
     },
+    "src/tostr/semantic/__init__.py": {
+      "description": "Empty File",
+      "diff_hash": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    "src/tostr/semantic/describer.py": {
+      "description": "Implements a hierarchical semantic description engine for codebase structures, providing both LLM-driven natural language generation and a lightweight structural fallback mechanism. The architecture utilizes a base class for asynchronous embedding management and lifecycle tracking, while specialized implementations handle either intelligent semantic analysis via LLM or direct metadata serialization for offline search indexing.",
+      "diff_hash": "2da590f53e7acad189eadba818b83141"
+    },
+    "src/tostr/semantic/describer.py#LLMDescriber": {
+      "description": "Orchestrates the generation of semantic descriptions for codebase structures (directories, files, classes, and methods) using LLM-based analysis, with a multi-tiered caching strategy that prioritizes existing descriptions from a lockfile to minimize redundant API calls.",
+      "diff_hash": "efc06346dfb88ef7cb99c10d591593f9"
+    },
+    "src/tostr/semantic/describer.py#LLMDescriber.__init__(...)": {
+      "description": "Initializes the describer with an LLM client, an embedding client, and an optional lockfile containing previously committed structural metadata.",
+      "diff_hash": "22fb3de1c7f8cb6f7c9dc092eff6d3d4"
+    },
+    "src/tostr/semantic/describer.py#LLMDescriber._apply_description_map(...)": {
+      "description": "Updates methods with descriptions provided by the LLM response map and enqueues them for subsequent embedding.",
+      "diff_hash": "840d086cc62f7e5bce747858abdc4bc7"
+    },
+    "src/tostr/semantic/describer.py#LLMDescriber._describe_class(...)": {
+      "description": "Generates a description for a class by recursing on nested structures, seeding method descriptions from the lockfile, and batching undocumented methods for LLM analysis.",
+      "diff_hash": "ccb4e79fe3726a2f1aca09bc150fe16b"
+    },
+    "src/tostr/semantic/describer.py#LLMDescriber._describe_directory(...)": {
+      "description": "Generates a description for a directory by recursively processing its children or aggregating their descriptions, defaulting to 'Empty Directory' if no children exist.",
+      "diff_hash": "5e218d09cab60a10cea876d5d4f1fb94"
+    },
+    "src/tostr/semantic/describer.py#LLMDescriber._describe_file(...)": {
+      "description": "Processes a file by recursing on non-method children, seeding method descriptions from the lockfile, and batching remaining undocumented methods for LLM-based description generation.",
+      "diff_hash": "4b5d1181f3272007df87407e72bfabe4"
+    },
+    "src/tostr/semantic/describer.py#LLMDescriber._describe_file_from_body(...)": {
+      "description": "Generates a description for a childless file by sending its raw body content to the LLM for analysis.",
+      "diff_hash": "d2625800ddcfce2dfdda6bb37c0b7f35"
+    },
+    "src/tostr/semantic/describer.py#LLMDescriber._describe_method(...)": {
+      "description": "Marks a method as described and queues it for embedding, intended for edge cases where a method is processed outside of a parent batch.",
+      "diff_hash": "082a53d8bf0aeefa60d12f983aa8e429"
+    },
+    "src/tostr/semantic/describer.py#LLMDescriber._seed_from_lockfile(...)": {
+      "description": "Attempts to populate a struct's description and vector from the lockfile if the struct's diff_hash matches the stored version, returning true on success.",
+      "diff_hash": "2418625e226fcac1cdf9da81d6521214"
+    },
+    "src/tostr/semantic/describer.py#LLMDescriber.describe(...)": {
+      "description": "Routes a structural element to its appropriate description handler based on type, ensuring the element is first seeded from the lockfile.",
+      "diff_hash": "2b5064b97bb9dcab7166f0cd5f50af5a"
+    },
+    "src/tostr/semantic/describer.py#NoLLMDescriber": {
+      "description": "A fallback implementation of the struct describer that bypasses LLM-based natural language generation, instead enqueuing structural metadata directly for embedding to maintain semantic search capabilities in offline or non-LLM modes.",
+      "diff_hash": "2576efad471e12c31b63dbb1defc0f05"
+    },
+    "src/tostr/semantic/describer.py#NoLLMDescriber.__init__(...)": {
+      "description": "Initializes the describer with an embedding client instance responsible for processing the enqueued structural data.",
+      "diff_hash": "baee673f50ac2a2bbc12dd9efb417677"
+    },
+    "src/tostr/semantic/describer.py#NoLLMDescriber._walk(...)": {
+      "description": "Recursively traverses the struct hierarchy, enqueuing non-field structs for embedding and continuing the walk through all child nodes.",
+      "diff_hash": "eedb344283753cc8914c60dd6fa5a303"
+    },
+    "src/tostr/semantic/describer.py#NoLLMDescriber.describe(...)": {
+      "description": "Initiates the recursive traversal process starting from the provided root struct to enqueue all eligible components for embedding.",
+      "diff_hash": "cf1c569df8061457a5a28279811295fe"
+    },
+    "src/tostr/semantic/describer.py#_DescriberBase": {
+      "description": "Provides shared infrastructure for embedding management and progress tracking within describer implementations, acting as a base class for handling asynchronous vectorization and lifecycle reporting.",
+      "diff_hash": "c0836d557221c59355fc07a138f156a7"
+    },
+    "src/tostr/semantic/describer.py#_DescriberBase._advance(...)": {
+      "description": "Increments the progress tracker associated with the provided struct's registry for a specific phase by a given integer amount.",
+      "diff_hash": "e0a3325c2e506508467dd7b99513d847"
+    },
+    "src/tostr/semantic/describer.py#_DescriberBase._handle_embed(...)": {
+      "description": "Evaluates the embedding status of a struct, either triggering a progress update if the vector exists or enqueuing the struct for processing via the configured embedder.",
+      "diff_hash": "6059d547efd016bdef6b5c45108ca898"
+    },
     "src/tostr/semantic/embeddings": {
-      "description": "Orchestrates asynchronous text-to-vector embedding generation for code structures, providing an abstract base interface for strategy implementation and a high-performance ONNX-based provider. Manages model lifecycle, batch-processed tokenization, and vector refinement pipelines, including L2 normalization and thread-pool offloading for scalable semantic analysis.",
+      "description": "Orchestrates high-throughput semantic vectorization of code structures through an extensible embedding architecture. Provides an abstract base for asynchronous processing and a specialized ONNX-based implementation that leverages Hugging Face tokenizers and ONNX Runtime for optimized, hardware-accelerated inference, including lifecycle management, batching, and post-processing normalization.",
       "diff_hash": ""
     },
     "src/tostr/semantic/embeddings/__init__.py": {
@@ -1346,12 +1262,12 @@
       "diff_hash": "3323d95a43606b7342f64c89033a7850"
     },
     "src/tostr/semantic/llm": {
-      "description": "Provides a modular, asynchronous abstraction layer for LLM integration, standardizing interaction across multiple providers including Ollama and Google Gemini. The architecture enforces structured output via Pydantic models and implements resilient execution patterns, including concurrency control, rate limiting, and robust error handling for reliable text generation workflows.",
+      "description": "Provides a modular, asynchronous framework for LLM-driven semantic analysis. It defines core abstractions for LLM interaction, including structured response modeling and concurrency management, while implementing provider-specific strategies for Gemini and Ollama to facilitate standardized, schema-enforced text generation across the application.",
       "diff_hash": ""
     },
     "src/tostr/semantic/llm/__init__.py": {
-      "description": "Empty File",
-      "diff_hash": "1782b990800dfa22e7de94483775aa8a"
+      "description": "Initializes the semantic LLM package by exposing core abstractions (LLMClient, LLMResponse, LLMStrategy), concrete provider implementations (GeminiStrategy, OllamaStrategy), and standardized system instruction constants for class, file, and directory processing.",
+      "diff_hash": "a1872e10903196924f5612a0d1150281"
     },
     "src/tostr/semantic/llm/base.py": {
       "description": "Provides a robust, asynchronous framework for LLM-based text generation, featuring structured response modeling, concurrency-controlled execution strategies, and resilient client orchestration with built-in error handling and rate-limiting.",
@@ -1423,11 +1339,39 @@
     },
     "src/tostr/semantic/llm/prompts.py": {
       "description": "This file is currently empty or contains no identifiable components or methods for analysis.",
-      "diff_hash": "835720142b58b49f83e0a406671d8dca"
+      "diff_hash": "385756ce62c3adb5d903c017fdd9b389"
+    },
+    "src/tostr/serializer.py": {
+      "description": "Provides a robust serialization framework for BaseStruct hierarchies, facilitating the transformation of complex code structures into standardized metadata formats. The module defines specialized containers for structural skeletons, detailed inspection results, and search-oriented entities, enabling recursive traversal and hierarchical representation of source code components for analysis and indexing purposes.",
+      "diff_hash": "c4ab960d0bae812defb08a6455498ba6"
+    },
+    "src/tostr/serializer.py#InspectResult": {
+      "description": "Represents a hierarchical metadata container for code analysis results, capturing structural information, relationships, and source code context for files, classes, and methods.",
+      "diff_hash": "e0577236431a1e32fcc3e72fa6a0d84c"
+    },
+    "src/tostr/serializer.py#SearchResult": {
+      "description": "Represents a structured search result entity containing unique identifiers, classification metadata, and a similarity distance metric for vector or heuristic search operations.",
+      "diff_hash": "7137f05cf05a727ef785dc743b7a0568"
+    },
+    "src/tostr/serializer.py#SkeletonResult": {
+      "description": "Represents a recursive tree structure for skeleton-based data, typically used for hierarchical object modeling or skeletal animation hierarchies. Each instance acts as a node containing unique identifiers and a list of child nodes.",
+      "diff_hash": "d5b6b5918d6de2c90899169f016931de"
+    },
+    "src/tostr/serializer.py#tost": {
+      "description": "A utility class providing serialization mechanisms for BaseStruct hierarchies, enabling recursive extraction of structural metadata (skeletons) or detailed inspection objects (full metadata with optional source bodies).",
+      "diff_hash": "366b1c290ec5a5e53e1dd032565e742c"
+    },
+    "src/tostr/serializer.py#tost.dump(...)": {
+      "description": "Recursively serializes a BaseStruct into an InspectResult, capturing structural metadata, dependency edges, and optional source code bodies up to a specified depth.",
+      "diff_hash": "49a38fc85b6f13193caa8e947db19796"
+    },
+    "src/tostr/serializer.py#tost.dump_skeleton(...)": {
+      "description": "Generates a hierarchical skeleton of a BaseStruct, recursively traversing files, directories, and classes to produce a lightweight tree of SkeletonResult nodes, with optional filtering for file-only structures.",
+      "diff_hash": "51aeb2e98ef739d78016429970efb3bc"
     },
     "src/tostr/server.py": {
-      "description": "Provides the core server-side orchestration for the Tostr project analysis framework. It manages project lifecycle operations including initialization, AST parsing, semantic indexing, and real-time file monitoring via a centralized WatcherRegistry. The module exposes a high-level API for querying project structures, performing semantic searches, and inspecting code components, while handling cache management and LLM-based metadata generation.",
-      "diff_hash": "e6708a66e4ed5a73f55b80ae265f149f"
+      "description": "Provides the core server-side interface for the Tostr analysis engine, orchestrating project indexing, semantic search, and structural inspection. It manages workspace-specific file watchers via WatcherRegistry, handles configuration scaffolding, and exposes utility methods for formatting AST data and search results into LLM-consumable text representations.",
+      "diff_hash": "a205997b7aaf1c0b9030c7a4eae33700"
     },
     "src/tostr/server.py#WatcherRegistry": {
       "description": "Manages a collection of isolated background file-watchers, keyed by absolute workspace path, to enable concurrent monitoring of multiple project directories within a stateless server architecture.",
@@ -1454,8 +1398,8 @@
       "diff_hash": "e9f9f227a41bec754ab65f78d0c2c638"
     },
     "src/tostr/server.py#_render_inspect(...)": {
-      "description": "Generates a structured, human-readable text representation of an InspectResult, including metadata, dependencies, and code body.",
-      "diff_hash": "ec391978ce60fab0690bd5e6cb290bc8"
+      "description": "Serializes an InspectResult object into a structured, human-readable text block containing metadata, dependency edges, child members, and the source code body.",
+      "diff_hash": "7e73dd853e21b9f9413d5b7fcbe36a2b"
     },
     "src/tostr/server.py#_render_search(...)": {
       "description": "Formats a list of search results into a concise, readable string representation for output.",
@@ -1505,6 +1449,154 @@
       "description": "Generates a hierarchical text representation of the project's AST for a specified subpath, providing an architectural overview.",
       "diff_hash": "f554a2a7d05714accc52613049a90c9c"
     },
+    "src/tostr/storage": {
+      "description": "Centralizes persistent storage and state management for the Tostr architecture, orchestrating SQLite-based graph persistence, vector embedding storage, and atomic JSON-based metadata caching. It enforces schema integrity and version compatibility through automated migration utilities and deterministic lockfile management, ensuring consistent state reconciliation for LLM-driven code analysis workflows.",
+      "diff_hash": ""
+    },
+    "src/tostr/storage/cache.py": {
+      "description": "Provides a persistent caching layer for code structures using SQLite, facilitating efficient storage, retrieval, and reconciliation of struct metadata and embeddings to optimize LLM-based processing workflows.",
+      "diff_hash": "25951d1267633eedb372855772af0a63"
+    },
+    "src/tostr/storage/cache.py#StructCache": {
+      "description": "Acts as the persistence layer for the struct registry, managing SQLite-backed storage, retrieval, and reconciliation of code structures. It handles hydration of structs from the database, incremental updates via pruning, and caching mechanisms to avoid redundant LLM-based description generation or embedding calculations.",
+      "diff_hash": "ef50b2abaaf619be0b413a35ff738889"
+    },
+    "src/tostr/storage/cache.py#StructCache.__init__(...)": {
+      "description": "Initializes the cache with project paths, a registry store, and configuration flags for caching and lockfile usage.",
+      "diff_hash": "b5fe645fddf6dd480f2c038651f34e00"
+    },
+    "src/tostr/storage/cache.py#StructCache._delete_struct_ids(...)": {
+      "description": "Removes specified struct IDs and their associated edges and vector data from the database.",
+      "diff_hash": "a9762bd48354434de7e51d2130d907a4"
+    },
+    "src/tostr/storage/cache.py#StructCache._prune_file_path(...)": {
+      "description": "Deletes structs under a specific file path that are not present in the provided set of kept IDs, ensuring the cache remains synchronized with the filesystem.",
+      "diff_hash": "c904c87c1a628c411eaebd9354095deb"
+    },
+    "src/tostr/storage/cache.py#StructCache.carry_over_unchanged(...)": {
+      "description": "Reuses cached descriptions and vectors for structs whose body hash matches the current state, preventing redundant processing for unchanged code.",
+      "diff_hash": "809007e99d8ade506027669c94e9b987"
+    },
+    "src/tostr/storage/cache.py#StructCache.collect_descriptions(...)": {
+      "description": "Extracts all valid, non-stale struct descriptions and optional vectors from the cache into a UID-keyed map for lockfile export.",
+      "diff_hash": "0ab216bc5919a4a28b57dc21e8363ce3"
+    },
+    "src/tostr/storage/cache.py#StructCache.delete_path_subtree(...)": {
+      "description": "Deletes all structs and associated data belonging to a specific file or directory path from the database.",
+      "diff_hash": "e22494817a83de5fd6cb360f6a1496ef"
+    },
+    "src/tostr/storage/cache.py#StructCache.get_struct_by_id(...)": {
+      "description": "Retrieves a struct by its unique ID, checking the in-memory cache first before querying the database.",
+      "diff_hash": "b9cb9571406fed16ec3a6cf31b1ec0f8"
+    },
+    "src/tostr/storage/cache.py#StructCache.get_struct_by_uid(...)": {
+      "description": "Retrieves a struct and its associated subtree by UID, hydrating from the database if not already present in the registry.",
+      "diff_hash": "2eed193ff9e95cea3470c2c1c874b69f"
+    },
+    "src/tostr/storage/cache.py#StructCache.load_filepath(...)": {
+      "description": "Hydrates a subtree of structs from the database into the registry, optionally skipping heavy fields like body and description for performance.",
+      "diff_hash": "ddd7030ebfd6ae3b2550948aa14faa6b"
+    },
+    "src/tostr/storage/cache.py#StructCache.load_lockfile_lookup(...)": {
+      "description": "Reads the project lockfile into a lookup dictionary to provide a secondary source of truth for struct descriptions and vectors before invoking LLM generation.",
+      "diff_hash": "63257406308b8c37fe6d6438a4d96d9d"
+    },
+    "src/tostr/storage/cache.py#StructCache.save_to_cache(...)": {
+      "description": "Persists in-memory parsed structs to the database, including edges and vectors, while optionally pruning stale entries associated with specific file paths.",
+      "diff_hash": "bb202ee400bc059baaf6b78359323c6b"
+    },
+    "src/tostr/storage/cache.py#StructCache.struct_exists(...)": {
+      "description": "Checks if a struct exists in the registry or the underlying database by its UID.",
+      "diff_hash": "e0af0e4350f354ffe96a37ffc9ad3a23"
+    },
+    "src/tostr/storage/cache.py#_deserialize_float32(...)": {
+      "description": "Converts a binary SQLite blob into a list of 32-bit floating-point numbers using struct unpacking.",
+      "diff_hash": "27c474edb7467ef0d5f49940f376eebe"
+    },
+    "src/tostr/storage/db.py": {
+      "description": "Manages a persistent SQLite database for storing and querying an AST-based code graph, including support for vector embeddings via sqlite-vec. It handles schema initialization, migrations, and provides high-level accessors for graph traversal, metadata retrieval, and semantic search.",
+      "diff_hash": "368d3e175ebc4fbb3d51a128fe145c0a"
+    },
+    "src/tostr/storage/db.py#SqliteClient": {
+      "description": "Manages a persistent SQLite database for storing and querying an AST-based code graph, including support for vector embeddings via sqlite-vec. It handles schema initialization, migrations, and provides high-level accessors for graph traversal, metadata retrieval, and semantic search.",
+      "diff_hash": "04580706c53513433ef1630b92e87a18"
+    },
+    "src/tostr/storage/db.py#SqliteClient.__init__(...)": {
+      "description": "Initializes the client by ensuring the database directory exists and triggering schema initialization.",
+      "diff_hash": "efec732e69d298ba1549661818d96a96"
+    },
+    "src/tostr/storage/db.py#SqliteClient.edge_count(...)": {
+      "description": "Returns the total count of edges stored in the database.",
+      "diff_hash": "4831713c0937673350c2eb8b8c8bb202"
+    },
+    "src/tostr/storage/db.py#SqliteClient.get_connection(...)": {
+      "description": "Provides a context-managed SQLite connection configured for concurrent access with vector extension support enabled.",
+      "diff_hash": "4c2360c1f41786bbf0de660fdd5d7eab"
+    },
+    "src/tostr/storage/db.py#SqliteClient.init_db(...)": {
+      "description": "Initializes the database schema, including tables for structs, edges, and virtual vector tables, while applying necessary migrations and performance pragmas.",
+      "diff_hash": "b91bac2a8d300dfc208c6ab880fe93c2"
+    },
+    "src/tostr/storage/db.py#SqliteClient.struct_descriptions(...)": {
+      "description": "Fetches metadata rows (id, uid, diff_hash, description) for structs, with optional filtering by file path and description presence.",
+      "diff_hash": "eecc977b9b167556c61366ae3e45d9d4"
+    },
+    "src/tostr/storage/db.py#SqliteClient.struct_exists(...)": {
+      "description": "Checks for the existence of a struct record by its unique identifier (uid).",
+      "diff_hash": "36f6f71c895517d7db3f308b8079021c"
+    },
+    "src/tostr/storage/db.py#SqliteClient.struct_type_counts(...)": {
+      "description": "Aggregates and returns a mapping of struct types to their respective occurrence counts in the database.",
+      "diff_hash": "3e7290693b72f58c9b6282c3f9652a31"
+    },
+    "src/tostr/storage/db.py#SqliteClient.uid_to_id(...)": {
+      "description": "Resolves a unique identifier (uid) to its internal database primary key (id).",
+      "diff_hash": "b88bd0c2a6d1f1bf88bdc5c03dbecdd3"
+    },
+    "src/tostr/storage/db.py#SqliteClient.vector_search(...)": {
+      "description": "Performs a K-nearest neighbor search on struct embeddings, optionally filtering results by struct type.",
+      "diff_hash": "d9aa377d72b48c7a742e86151eddd1ab"
+    },
+    "src/tostr/storage/db.py#SqliteClient.vectors_for_ids(...)": {
+      "description": "Retrieves raw vector data rows for a specified list of struct identifiers.",
+      "diff_hash": "44eb479534c7bb6810a3ff913ac52308"
+    },
+    "src/tostr/storage/lockfile.py": {
+      "description": "Manages the lifecycle of a project-specific JSON lockfile used for caching and versioning metadata entries. It provides atomic read/write operations that enforce deterministic serialization, version compatibility checks, and change-detection to minimize unnecessary filesystem churn.",
+      "diff_hash": "5e157816063408df52dea932216da21e"
+    },
+    "src/tostr/storage/lockfile.py#path_for(...)": {
+      "description": "Constructs and returns the absolute filesystem path to the project's lockfile by appending the standard lockfile name to the provided project root directory.",
+      "diff_hash": "01722227981b0aba78458dd0d39f4db9"
+    },
+    "src/tostr/storage/lockfile.py#read(...)": {
+      "description": "Reads and validates the project lockfile, returning the entries map if the file exists and its cache format version is compatible with the current build, otherwise returning None.",
+      "diff_hash": "229dc79b09eb8f0830b2d7d8cccd40e7"
+    },
+    "src/tostr/storage/lockfile.py#write(...)": {
+      "description": "Serializes project entries into a versioned, deterministically formatted JSON lockfile, performing an identity check against existing content to prevent redundant filesystem writes.",
+      "diff_hash": "ecfbaf8d8b09e78ae0c57956c78212eb"
+    },
+    "src/tostr/storage/versioning.py": {
+      "description": "Manages semantic versioning for Tostr storage formats, providing utilities to validate database compatibility against the current application version. It utilizes a FormatVersion metadata structure to track breaking changes and leverages SQLite's user_version pragma to verify cache integrity.",
+      "diff_hash": "58c2d3fe1bb5b619b2a19c641cca5753"
+    },
+    "src/tostr/storage/versioning.py#FormatVersion": {
+      "description": "Represents a semantic versioning metadata object for data formats, encapsulating the version number, a flag indicating backward-incompatible changes, and a descriptive summary of the release.",
+      "diff_hash": "c4653da81cc2561cc4e592312a44b6d2"
+    },
+    "src/tostr/storage/versioning.py#incompatibility_reason(...)": {
+      "description": "Determines if a stored cache version is compatible with the current build by checking for future versioning or intervening breaking changes, returning a descriptive error string if incompatible.",
+      "diff_hash": "9983e2538fb8838c13583620104af7b2"
+    },
+    "src/tostr/storage/versioning.py#is_compatible(...)": {
+      "description": "Validates the compatibility of a database file by reading its version and checking for incompatibility reasons.",
+      "diff_hash": "b4e081f9fda9e9dc38112ac5aacc85eb"
+    },
+    "src/tostr/storage/versioning.py#read_db_version(...)": {
+      "description": "Retrieves the integer format version from an SQLite database file by querying the PRAGMA user_version field, defaulting to 0 if uninitialized.",
+      "diff_hash": "4c9ffacf7f3751b2e65a44e6bce08073"
+    },
     "src/tostr/templates": {
       "description": "Empty File",
       "diff_hash": ""
@@ -1512,6 +1604,58 @@
     "src/tostr/templates/__init__.py": {
       "description": "Empty File",
       "diff_hash": "a722bf52740f119781f2b6728529e550"
+    },
+    "src/tostr/utils": {
+      "description": "Centralized utility layer providing cross-cutting infrastructure for logging and execution monitoring. Encapsulates Loguru-based logging with MCP-compatible stream handling and thread-safe progress tracking via the Rich library to support multi-stage task orchestration.",
+      "diff_hash": ""
+    },
+    "src/tostr/utils/__init__.py": {
+      "description": "Package initialization file for the tostr.utils module, exposing logging configuration utilities (configure_mcp_logging, configure_cli_logging) and the ProgressTracker class for external consumption.",
+      "diff_hash": "28bcb6c4a4b4ab0eaa146db75888c80c"
+    },
+    "src/tostr/utils/logger.py": {
+      "description": "Provides centralized logging infrastructure for the application, integrating standard Python logging with the Loguru framework via a custom InterceptHandler to ensure compatibility with MCP stdio streams and thread-safe file-based logging.",
+      "diff_hash": "3aee99a7329b3cd760bc22cc4b1fb8c7"
+    },
+    "src/tostr/utils/logger.py#InterceptHandler": {
+      "description": "A custom logging handler that bridges standard Python logging to the Loguru framework, ensuring dependency logs are correctly formatted and preventing interference with the MCP stdio stream.",
+      "diff_hash": "2ec1e337e05318feb65c47fa36f385a4"
+    },
+    "src/tostr/utils/logger.py#InterceptHandler.emit(...)": {
+      "description": "Routes a logging record to Loguru by dynamically resolving the caller's stack frame to maintain accurate source attribution and mapping the standard log level to the Loguru equivalent.",
+      "diff_hash": "5acf31f87e021cb3fe9bac45b085bce3"
+    },
+    "src/tostr/utils/logger.py#configure_cli_logging(...)": {
+      "description": "Initializes global logging for CLI environments by removing existing handlers and configuring stdout output at DEBUG or INFO levels.",
+      "diff_hash": "5908f26d0963b03564945209875fa567"
+    },
+    "src/tostr/utils/logger.py#configure_mcp_logging(...)": {
+      "description": "Configures persistent file-based logging within a project-specific directory, implementing log rotation, retention policies, and intercepting standard library logs to ensure unified output.",
+      "diff_hash": "e6df130dc18a7fd14da3a7c22dcb1beb"
+    },
+    "src/tostr/utils/progress.py": {
+      "description": "Manages multi-stage progress tracking using the Rich library, providing thread-safe updates for dependency resolution, description, and embedding tasks.",
+      "diff_hash": "966618b273836a5cf80322e27181d600"
+    },
+    "src/tostr/utils/progress.py#ProgressTracker": {
+      "description": "Manages multi-stage progress tracking using the Rich library, providing thread-safe updates for dependency resolution, description, and embedding tasks.",
+      "diff_hash": "b89f649e3ec6a92d3116f8d4211ffe39"
+    },
+    "src/tostr/utils/progress.py#ProgressTracker.__init__(...)": {
+      "description": "Initializes the tracker with a Rich Progress instance and registers optional task bars for resolution, description, and embedding.",
+      "diff_hash": "fbcabe32de7b2a97f5f82a7f6f0b873a"
+    },
+    "src/tostr/utils/progress.py#ProgressTracker.advance(...)": {
+      "description": "Advances the completion progress of a specified task type by the given amount.",
+      "diff_hash": "6ec3ea6006a99425916281016e90e16e"
+    },
+    "src/tostr/utils/progress.py#ProgressTracker.enqueue(...)": {
+      "description": "Increments the total expected work units for a specified task type, allowing dynamic adjustment of progress bar capacity.",
+      "diff_hash": "975ee0ad254c9ce32a0ee30beedfdb31"
+    },
+    "src/tostr/utils/progress.py#ProgressTracker.finish(...)": {
+      "description": "Completes all registered progress bars by advancing them to their respective total counts.",
+      "diff_hash": "45f6b0ed244d50fbc02dea1a967a75b6"
     }
   },
   "tostr_lock_version": 1

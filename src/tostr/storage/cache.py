@@ -4,17 +4,17 @@ from pathlib import Path
 from typing import Optional, List, Set, Dict, TYPE_CHECKING
 from collections import defaultdict
 import sqlite_vec
+from loguru import logger
 
-from tostr.core.db import SqliteClient
 from tostr.core.paths import ProjectPaths
-from tostr.core import lockfile
+from tostr.storage import lockfile
 from tostr.core.models import *
 from tostr.core.builders import BaseBuilder
 
-from loguru import logger
+from .db import SqliteClient
 
 if TYPE_CHECKING:
-    from tostr.core.registry import Registry
+    from tostr.graph.registry import Registry
 
 
 def _deserialize_float32(blob) -> Optional[List[float]]:

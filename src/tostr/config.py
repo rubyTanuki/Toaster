@@ -7,8 +7,8 @@ import pathspec
 from loguru import logger
 
 # Bundled language ignore templates live at src/tostr/languages/<lang>/default.tostrignore.
-# config.py is at src/tostr/core/context/config.py, so languages/ is three parents up.
-_LANGUAGES_DIR = Path(__file__).resolve().parents[2] / "languages"
+# config.py sits at the package root, so languages/ is one parent up.
+_LANGUAGES_DIR = Path(__file__).resolve().parents[0] / "languages"
 
 
 def _languages_for(language: str) -> List[str]:

@@ -5,7 +5,7 @@ from unittest.mock import MagicMock
 
 from tree_sitter import Parser
 from tostr.languages.java.language import JAVA_LANGUAGE
-from tostr.core.registry import Registry
+from tostr.graph.registry import Registry
 from tostr.core.models import BaseFile, BaseClass, BaseField, BaseStruct
 from tostr.languages.java.builders import JavaFieldBuilder
 
