@@ -13,12 +13,7 @@ if TYPE_CHECKING:
 
 
 class Registry:
-    """In-memory store of parsed structs and the object graph's context handle.
-
-    Owns the uid/id indexes, hands out language resolvers, and carries the ambient
-    paths/config/progress every struct, builder, and resolver reaches through. Pure memory —
-    persistence (hydration, write-back, lockfile/carry-over) lives in `StructCache`, which
-    takes a `Registry` as its `struct_store`."""
+    """In-memory store of parsed structs and the object graph's context handle."""
 
     def __init__(self, paths: ProjectPaths = None, progress_tracker: "ProgressTracker" = None, config: ProjectConfig = None):
         self.progress_tracker = progress_tracker
@@ -26,19 +21,24 @@ class Registry:
         # injected handle so every consumer resolves paths the same way.
         self.paths = paths
         # Structs built by *this* process (parse/builders) vs. structs rehydrated from the cache
-        # DB for context. Split so persistence can write back only what was actually parsed:
-        # hydrated structs come out of the DB without their dependency edges in memory, so
-        # writing them back would wipe those edges (and stale-mark their descriptions).
+        # DB for context.
         self.parsed_uid_map: Dict[str, BaseStruct] = {}
         self.hydrated_uid_map: Dict[str, BaseStruct] = {}
         self.id_map: Dict[str, BaseStruct] = {}
-        # Negative-lookup cache for hydration misses (read by StructCache.get_struct_by_uid).
-        self.missing_uids: Set[str] = set()
+        self.missing_uids: Set[str] = set() # Negative-lookup cache for hydration misses.
         self.root: Optional[BaseStruct] = None
-        # A caller (e.g. parse) can inject a ProjectConfig carrying per-invocation overrides; else
-        # build one from the project root so on-disk tostr.toml / .tostrignore still apply.
         self.config = config or (ProjectConfig(paths.project_path) if paths else None)
         self._resolvers: Dict[Optional[str], BaseDependencyResolver] = {}
+        self._uid_map_cache: Optional[Dict[str, BaseStruct]] = None # Lazily rebuilt on next `uid_map` access after a mutation, instead of on every access
+        # Suffix index (last '/'-delimited UID segment -> {uid: struct}) so import resolution can
+        # find a path-suffix match without scanning every struct in the project. Kept split by
+        # source and probed hydrated-then-parsed to mirror uid_map's merge/precedence order.
+        self._suffix_index_hydrated: Dict[str, Dict[str, BaseStruct]] = {}
+        self._suffix_index_parsed: Dict[str, Dict[str, BaseStruct]] = {}
+        # Name index, restricted to the struct kinds resolve_import's re-export fallback matches
+        # against, so that fallback doesn't need to scan every struct in the project either.
+        self._name_index_hydrated: Dict[str, Dict[str, BaseStruct]] = {}
+        self._name_index_parsed: Dict[str, Dict[str, BaseStruct]] = {}
 
     @property
     def project_path(self) -> Optional[Path]:
@@ -49,9 +49,37 @@ class Registry:
         """All known structs, parsed and hydrated. Parsed wins on a uid collision (a reparse
         supersedes the hydrated prior version). Read-only merged view — register through
         `add_struct` / `add_hydrated_struct`, never by assigning into this dict."""
-        return {uid: struct
-                for source in (self.hydrated_uid_map, self.parsed_uid_map)
-                for uid, struct in source.items()}
+        if self._uid_map_cache is None:
+            self._uid_map_cache = {uid: struct
+                                    for source in (self.hydrated_uid_map, self.parsed_uid_map)
+                                    for uid, struct in source.items()}
+        return self._uid_map_cache
+
+    @staticmethod
+    def _suffix_key(uid: str) -> str:
+        """The trailing '/'-delimited segment of a UID, used to bucket suffix-match candidates."""
+        return uid.rsplit("/", 1)[-1]
+
+    def _index_struct(self, struct: BaseStruct, suffix_index: Dict[str, Dict[str, BaseStruct]],
+                       name_index: Dict[str, Dict[str, BaseStruct]]) -> None:
+        suffix_index.setdefault(self._suffix_key(struct.uid), {})[struct.uid] = struct
+        if isinstance(struct, (BaseClass, BaseMethod, BaseField)):
+            name_index.setdefault(struct.name, {})[struct.uid] = struct
+
+    def _deindex_struct(self, struct: BaseStruct, suffix_index: Dict[str, Dict[str, BaseStruct]],
+                         name_index: Dict[str, Dict[str, BaseStruct]]) -> None:
+        key = self._suffix_key(struct.uid)
+        bucket = suffix_index.get(key)
+        if bucket:
+            bucket.pop(struct.uid, None)
+            if not bucket:
+                del suffix_index[key]
+        if isinstance(struct, (BaseClass, BaseMethod, BaseField)):
+            nbucket = name_index.get(struct.name)
+            if nbucket:
+                nbucket.pop(struct.uid, None)
+                if not nbucket:
+                    del name_index[struct.name]
 
     def get_resolver(self, ext: str = "") -> BaseDependencyResolver:
         from tostr.core.providers import LanguageProvider
@@ -84,6 +112,8 @@ class Registry:
         """Register a freshly parsed struct in the in-memory maps and enqueue its pipeline work."""
         self.parsed_uid_map[struct.uid] = struct
         self.id_map[struct.id] = struct
+        self._index_struct(struct, self._suffix_index_parsed, self._name_index_parsed)
+        self._uid_map_cache = None
 
         if self.progress_tracker:
             # All structs undergo dependency resolution
@@ -99,6 +129,8 @@ class Registry:
         resolution, but excluded from write-back (`save_to_cache`) and pipeline progress."""
         self.hydrated_uid_map[struct.uid] = struct
         self.id_map[struct.id] = struct
+        self._index_struct(struct, self._suffix_index_hydrated, self._name_index_hydrated)
+        self._uid_map_cache = None
 
     def evict_hydrated_path(self, path_str: str):
         """Drop hydrated structs stored under file path `path_str` — called before reparsing that
@@ -108,6 +140,9 @@ class Registry:
         for uid in stale:
             struct = self.hydrated_uid_map.pop(uid)
             self.id_map.pop(struct.id, None)
+            self._deindex_struct(struct, self._suffix_index_hydrated, self._name_index_hydrated)
+        if stale:
+            self._uid_map_cache = None
 
     def get_struct_by_uid(self, uid: str) -> Optional["BaseStruct"]:
         """In-memory lookup by normalized UID (exact). DB hydration lives in StructCache."""
@@ -115,12 +150,19 @@ class Registry:
         return hit if hit is not None else self.hydrated_uid_map.get(uid)
 
     def _find_by_uid_or_suffix(self, candidate: str) -> Optional["BaseStruct"]:
-        """Exact UID lookup, else match the candidate as a trailing path segment."""
+        """Exact UID lookup, else match the candidate as a trailing path segment. The suffix
+        match is bucketed by trailing UID segment (`_suffix_key`) rather than scanning every
+        struct in the project — this path is the common case for absolute imports in a
+        src-layout project, so it needs to stay sub-linear in project size."""
         exact = self.get_struct_by_uid(candidate)
         if exact is not None:
             return exact
         tail = "/" + candidate
-        for uid, struct in self.uid_map.items():
+        key = self._suffix_key(candidate)
+        for uid, struct in self._suffix_index_hydrated.get(key, {}).items():
+            if uid.endswith(tail):
+                return struct
+        for uid, struct in self._suffix_index_parsed.get(key, {}).items():
             if uid.endswith(tail):
                 return struct
         return None
@@ -144,10 +186,10 @@ class Registry:
             scope_uid, member = candidate.rsplit("#", 1)
             if self._find_by_uid_or_suffix(scope_uid) is not None:
                 name = member.split("(")[0]
-                matches = [s for s in self.uid_map.values()
-                           if s.name == name and isinstance(s, (BaseClass, BaseMethod, BaseField))]
-                if len(matches) == 1:
-                    return matches[0]
+                candidates: Dict[str, BaseStruct] = dict(self._name_index_hydrated.get(name, {}))
+                candidates.update(self._name_index_parsed.get(name, {}))
+                if len(candidates) == 1:
+                    return next(iter(candidates.values()))
         return None
 
     def get_struct_by_id(self, id: str) -> Optional["BaseStruct"]:
