@@ -29,11 +29,19 @@ class BaseParser(ABC):
         if not isinstance(subpath, Path):
             subpath = Path(subpath)
 
+        tracker = self.registry.progress_tracker if self.registry else None
+
+        if tracker:
+            tracker.phase_start('ast')
         self.parse_path(subpath)
+        if tracker:
+            tracker.phase_end('ast')
 
         # Dependency resolution is routed per-file by extension, so it is safe to
         # always run it; files in languages without a resolver are simply skipped.
         self.resolve_dependencies()
+        if tracker:
+            tracker.phase_end('resolve')
 
         # Reuse descriptions/vectors from the prior cache for structs whose body is unchanged, so a
         # full reparse only regenerates what actually changed instead of re-describing the whole

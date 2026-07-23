@@ -28,7 +28,6 @@ from tostr.agents import add_agent, remove_agent, list_agents, PROFILES
 from tostr.server import mcp
 
 from tostr.utils import configure_cli_logging, ProgressTracker
-from rich.progress import Progress, TextColumn, BarColumn, TaskProgressColumn, TimeElapsedColumn
 
 import multiprocessing
 
@@ -440,21 +439,15 @@ def parse(
     if not embedding_model_path.exists():
         typer.echo(f"Embedding model not found at {embedding_model_path}. Downloading from huggingface...")
 
-    typer.echo(f"Parsing and describing files...")
     try:
         if debug:
             asyncio.run(parse_async(path, use_cache, language, None, no_llm=no_llm, llm=llm))
         else:
-            with Progress(
-                TextColumn("[progress.description]{task.description}"),
-                BarColumn(),
-                TaskProgressColumn(),
-                TimeElapsedColumn(),
-            ) as progress:
-                # No describe bar in no-LLM mode since descriptions are skipped.
-                progress_tracker = ProgressTracker(progress, include_describe=not no_llm)
-                asyncio.run(parse_async(path, use_cache, language, progress_tracker, no_llm=no_llm, llm=llm))
-                progress_tracker.finish()
+            # No describe bar in no-LLM mode since descriptions are skipped. ProgressTracker
+            # owns its own Progress/Live instances (one per pipeline phase), created lazily.
+            progress_tracker = ProgressTracker(console, include_describe=not no_llm)
+            asyncio.run(parse_async(path, use_cache, language, progress_tracker, no_llm=no_llm, llm=llm))
+            progress_tracker.finish()
     except TostrError as e:
         typer.secho(f"❌ Error: {e}", fg="red", err=True)
         raise typer.Exit(code=1)
