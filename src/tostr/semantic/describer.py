@@ -136,10 +136,12 @@ class LLMDescriber(_DescriberBase):
 
         if not response:
             logger.warning(f"⚠️ Skipping {directory.uid} due to LLM failure")
+            self._advance(directory, 'describe', 1)
             self._advance(directory, 'embed', 1)
             return
 
         directory.description = response.description
+        self._advance(directory, 'describe', 1)
         self.embedder.enqueue(directory)
         logger.debug(f"Successfully Generated Description for directory {directory.uid}")
 
@@ -217,6 +219,7 @@ class LLMDescriber(_DescriberBase):
             return
 
         file.description = response.description
+        self._advance(file, 'describe', 1)
         self.embedder.enqueue(file)
 
         handled_indices = self._apply_description_map(response.description_map, method_lookup)
@@ -253,6 +256,7 @@ class LLMDescriber(_DescriberBase):
             return
 
         file.description = response.description
+        self._advance(file, 'describe', 1)
         self.embedder.enqueue(file)
         logger.debug(f"Successfully Generated Description for file {file.uid}")
 
@@ -310,6 +314,7 @@ class LLMDescriber(_DescriberBase):
             return
 
         cls.description = response.description
+        self._advance(cls, 'describe', 1)
         self.embedder.enqueue(cls)
 
         handled_indices = self._apply_description_map(response.description_map, method_lookup)
