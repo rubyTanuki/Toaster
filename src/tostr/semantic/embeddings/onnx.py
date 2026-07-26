@@ -1,6 +1,8 @@
 from __future__ import annotations
+import platform
 import shutil
 import urllib.request
+from functools import cached_property
 from pathlib import Path
 from loguru import logger
 import numpy as np
@@ -8,16 +10,21 @@ from .base import EmbeddingStrategy
 
 _CACHE_DIR = Path.home() / ".cache" / "tostr" / "models" / "all-MiniLM-L6-v2"
 _HF_BASE = "https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main"
-_MODEL_FILENAME = "model.onnx" # model_qint8_arm64.onnx
-_ASSETS = {
-    _MODEL_FILENAME: f"{_HF_BASE}/onnx/{_MODEL_FILENAME}",
-    "tokenizer.json": f"{_HF_BASE}/tokenizer.json",
+
+# Architecture-specific quantized ONNX builds (~23 MB each, vs ~90 MB unquantized).
+# x86-64 maps to the AVX2 build rather than an AVX-512 variant: AVX2 is present on
+# effectively all modern x86 CPUs, whereas AVX-512 is not and would fault at inference.
+_FALLBACK_MODEL = "model.onnx"
+_ARCH_MODELS = {
+    "arm64": "model_qint8_arm64.onnx",
+    "aarch64": "model_qint8_arm64.onnx",
+    "x86_64": "model_quint8_avx2.onnx",
+    "amd64": "model_quint8_avx2.onnx",
 }
+_TOKENIZER_FILENAME = "tokenizer.json"
 # Minimum acceptable sizes catch truncated downloads before onnxruntime tries to parse them.
-_ASSET_MIN_SIZES = {
-    _MODEL_FILENAME: 15 * 1024 * 1024,   # quantized model is ~23 MB
-    "tokenizer.json": 100 * 1024,
-}
+_MODEL_MIN_SIZE = 15 * 1024 * 1024
+_TOKENIZER_MIN_SIZE = 100 * 1024
 _DOWNLOAD_HEADERS = {"User-Agent": "tostr/1.0"}
 
 class OnnxEmbeddingStrategy(EmbeddingStrategy):
@@ -25,8 +32,8 @@ class OnnxEmbeddingStrategy(EmbeddingStrategy):
         super().__init__(batch_size=batch_size, batch_timeout=batch_timeout)
 
         self.model_dir = _CACHE_DIR
-        self.onnx_path = str(self.model_dir / _MODEL_FILENAME)
-        self.vocab_path = str(self.model_dir / "tokenizer.json")
+        self.onnx_path = str(self.model_dir / self.model_filename)
+        self.vocab_path = str(self.model_dir / _TOKENIZER_FILENAME)
 
         self._ensure_assets_present()
 
@@ -41,19 +48,39 @@ class OnnxEmbeddingStrategy(EmbeddingStrategy):
     def dimensions(self) -> int:
         return 384
 
+    @cached_property
+    def model_filename(self) -> str:
+        """The quantized ONNX build matching the host CPU, else the portable default."""
+        return _ARCH_MODELS.get(platform.machine().lower(), _FALLBACK_MODEL)
+
+    @cached_property
+    def _assets(self) -> dict[str, str]:
+        """Filename -> download URL for every asset required by this architecture."""
+        return {
+            self.model_filename: f"{_HF_BASE}/onnx/{self.model_filename}",
+            _TOKENIZER_FILENAME: f"{_HF_BASE}/{_TOKENIZER_FILENAME}",
+        }
+
+    @cached_property
+    def _asset_min_sizes(self) -> dict[str, int]:
+        return {
+            self.model_filename: _MODEL_MIN_SIZE,
+            _TOKENIZER_FILENAME: _TOKENIZER_MIN_SIZE,
+        }
+
     def _asset_is_valid(self, filename: str) -> bool:
         dest = self.model_dir / filename
-        min_size = _ASSET_MIN_SIZES.get(filename, 0)
+        min_size = self._asset_min_sizes.get(filename, 0)
         return dest.exists() and dest.stat().st_size >= min_size
 
     def _ensure_assets_present(self):
-        if all(self._asset_is_valid(f) for f in _ASSETS):
+        if all(self._asset_is_valid(f) for f in self._assets):
             return
 
         self.model_dir.mkdir(parents=True, exist_ok=True)
         logger.info("First-time setup: downloading embedding model from Hugging Face Hub (~23 MB)...")
 
-        for filename, url in _ASSETS.items():
+        for filename, url in self._assets.items():
             if self._asset_is_valid(filename):
                 continue
 
@@ -75,7 +102,7 @@ class OnnxEmbeddingStrategy(EmbeddingStrategy):
                 ) from e
 
             actual = dest.stat().st_size
-            min_size = _ASSET_MIN_SIZES.get(filename, 0)
+            min_size = self._asset_min_sizes.get(filename, 0)
             if actual < min_size:
                 dest.unlink(missing_ok=True)
                 raise RuntimeError(
