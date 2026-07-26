@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field
 from loguru import logger
 
 from tostr.core.models import BaseStruct, Directory, BaseFile, BaseClass, BaseMethod, BaseField
-from tostr.semantic.llm import CLASS_SYSTEM_INSTRUCTION, FILE_SYSTEM_INSTRUCTION, FILE_BODY_SYSTEM_INSTRUCTION, DIRECTORY_SYSTEM_INSTRUCTION
+from tostr.semantic.llm import CLASS_SYSTEM_INSTRUCTION, FILE_SYSTEM_INSTRUCTION, FILE_BODY_SYSTEM_INSTRUCTION
 
 if TYPE_CHECKING:
     from tostr.semantic.llm.base import LLMClient
@@ -46,7 +46,9 @@ class NoLLMDescriber(_DescriberBase):
         self._walk(struct)
 
     def _walk(self, struct: BaseStruct):
-        if not isinstance(struct, BaseField):
+        # Directories get a centroid vector post-drain (see BaseParser._compute_directory_centroids),
+        # never a text embedding; fields are never embedded. Everything else embeds on code context.
+        if not isinstance(struct, (BaseField, Directory)):
             self._handle_embed(struct)
         for child in struct.all_children:
             self._walk(child)
@@ -102,46 +104,14 @@ class LLMDescriber(_DescriberBase):
         # BaseField: no description needed
 
     async def _describe_directory(self, directory: Directory):
-        # Early exit before recursion: if already described, children are assumed done too
-        if directory.description:
-            self._advance(directory, 'describe', 1)
-            self._handle_embed(directory)
-            return
-
+        # Directories carry no LLM description and no text embedding. Their sole job here is to
+        # drive the post-order recursion so every descendant file/class/method gets described and
+        # embedded; the directory's own vector is a centroid of its subtree's file vectors, filled
+        # after the embedder drains (BaseParser._compute_directory_centroids). Directories are
+        # excluded from the describe/embed progress totals (Registry.add_struct), so nothing is
+        # advanced for them here.
         if directory.all_children:
             await asyncio.gather(*[self.describe(c) for c in directory.all_children])
-
-        if not directory.all_children:
-            directory.description = "Empty Directory"
-            self._advance(directory, 'describe', 1)
-            self._advance(directory, 'embed', 1)
-            return
-
-        if len(directory.all_children) == 1:
-            directory.description = directory.all_children[0].description
-            self._advance(directory, 'describe', 1)
-            self._advance(directory, 'embed', 1)
-            return
-
-        logger.debug(f"Generating Description for directory {directory.uid}...")
-
-        class DirectoryDescriptionSchema(BaseModel):
-            description: str = Field(description="Description of the directory")
-
-        response = await self.llm.generate_description(
-            input_data={c.uid: c.description for c in directory.all_children},
-            system_prompt=DIRECTORY_SYSTEM_INSTRUCTION,
-            response_schema=DirectoryDescriptionSchema,
-        )
-
-        if not response:
-            logger.warning(f"⚠️ Skipping {directory.uid} due to LLM failure")
-            self._advance(directory, 'embed', 1)
-            return
-
-        directory.description = response.description
-        self.embedder.enqueue(directory)
-        logger.debug(f"Successfully Generated Description for directory {directory.uid}")
 
     async def _describe_file(self, file: BaseFile):
         # Seed methods from the lockfile up front (they aren't routed through describe()) so the
@@ -217,6 +187,7 @@ class LLMDescriber(_DescriberBase):
             return
 
         file.description = response.description
+        self._advance(file, 'describe', 1)
         self.embedder.enqueue(file)
 
         handled_indices = self._apply_description_map(response.description_map, method_lookup)
@@ -253,6 +224,7 @@ class LLMDescriber(_DescriberBase):
             return
 
         file.description = response.description
+        self._advance(file, 'describe', 1)
         self.embedder.enqueue(file)
         logger.debug(f"Successfully Generated Description for file {file.uid}")
 
@@ -310,6 +282,7 @@ class LLMDescriber(_DescriberBase):
             return
 
         cls.description = response.description
+        self._advance(cls, 'describe', 1)
         self.embedder.enqueue(cls)
 
         handled_indices = self._apply_description_map(response.description_map, method_lookup)

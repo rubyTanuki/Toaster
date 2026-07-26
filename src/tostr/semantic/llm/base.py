@@ -44,16 +44,23 @@ class LLMClient:
         
         max_retries = 3
         base_delay = 2
+        request_timeout = 10  # bounds a single attempt so one slow/stuck call can't stall the
+        # whole describe tree — a directory's own LLM call only fires after every descendant's
+        # call has finished (see _describe_directory), so an unbounded hang here blocks its
+        # entire ancestor chain, not just this one struct.
 
         async with self.strategy.semaphore:
             for attempt in range(max_retries):
                 try:
-                    result = await self.strategy.generate(
-                        input_data_string=input_data_string, 
-                        system_instruction=system_prompt,
-                        response_schema=response_schema
+                    result = await asyncio.wait_for(
+                        self.strategy.generate(
+                            input_data_string=input_data_string,
+                            system_instruction=system_prompt,
+                            response_schema=response_schema
+                        ),
+                        timeout=request_timeout,
                     )
-                    
+
                     elapsed_time = time.perf_counter() - start_time
                     logger.debug(f"LLM Generation successful in {elapsed_time:.4f} seconds")
 
@@ -62,7 +69,16 @@ class LLMClient:
                         self.progress_tracker.advance('describe', 1)
 
                     return result
-                    
+
+                except asyncio.TimeoutError:
+                    if attempt < max_retries - 1:
+                        sleep_time = base_delay * (2 ** attempt)
+                        logger.warning(f"⏳ LLM call exceeded {request_timeout}s. Retrying in {sleep_time}s...")
+                        await asyncio.sleep(sleep_time)
+                        continue
+                    logger.error(f"LLM Generation failed: timed out after {request_timeout}s on all {max_retries} attempts")
+                    return None
+
                 except Exception as e:
                     error_str = str(e)
                     if "503" in error_str or "429" in error_str:
@@ -70,7 +86,7 @@ class LLMClient:
                             sleep_time = base_delay * (2 ** attempt)
                             logger.warning(f"⏳ LLM Server busy. Retrying in {sleep_time}s...")
                             await asyncio.sleep(sleep_time)
-                            continue 
-                    
+                            continue
+
                     logger.error(f"LLM Generation failed: {error_str}")
                     return None

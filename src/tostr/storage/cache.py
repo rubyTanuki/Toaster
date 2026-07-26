@@ -286,15 +286,18 @@ class StructCache:
                 node_sql = f"INSERT OR REPLACE INTO structs ({columns}) VALUES ({placeholders})"
                 node_values = [tuple(serialize_for_db(n.get(col)) for col in columns_tuple) for n in dict_list]
                 conn.executemany(node_sql, node_values)
-            
+
             conn.executemany("DELETE FROM edges WHERE source_id = ?", parsed_ids)
             if all_edges:
                 conn.executemany("INSERT INTO edges (source_id, target_id, edge_type) VALUES (?, ?, ?)", list(all_edges))
-            
+
             if vectors:
-                # vec0 virtual tables do not naturally enforce uniqueness on non-rowid keys during REPLACE
-                # so we manually delete to avoid duplicates before inserting.
-                conn.executemany("DELETE FROM vec_structs WHERE struct_id = ?", [(v[0],) for v in vectors])
+                # vec0 virtual tables have no efficient index on struct_id, so point-delete is O(n).
+                # just delete all and re-insert for full reparses
+                if prune_paths is None:
+                    conn.execute("DELETE FROM vec_structs")
+                else:
+                    conn.executemany("DELETE FROM vec_structs WHERE struct_id = ?", [(v[0],) for v in vectors])
                 conn.executemany("INSERT INTO vec_structs (struct_id, vector) VALUES (?, ?)", vectors)
 
             # Diff-prune: now that the freshly-parsed structs are written, remove anything that used

@@ -2,7 +2,7 @@ from __future__ import annotations
 from typing import List, Dict, Optional, TYPE_CHECKING, Set
 from pathlib import Path
 
-from tostr.core.models import BaseFile, BaseClass, BaseMethod, BaseField
+from tostr.core.models import BaseFile, BaseClass, BaseMethod, BaseField, Directory
 from tostr.config import ProjectConfig
 from tostr.core.paths import ProjectPaths
 from tostr.graph.resolver import BaseDependencyResolver
@@ -119,8 +119,11 @@ class Registry:
             # All structs undergo dependency resolution
             self.progress_tracker.enqueue('resolve', 1)
 
-            # Only track describing and embedding for non-field structs
-            if not isinstance(struct, BaseField):
+            # Track describing/embedding only for structs that actually go through the LLM +
+            # embedder queue. Fields never do; directories no longer do either — they get a
+            # centroid vector computed post-drain, not an LLM description or a queued embed — so
+            # counting them would leave the Describing/Embedding bars short and hanging.
+            if not isinstance(struct, (BaseField, Directory)):
                 self.progress_tracker.enqueue('describe', 1)
                 self.progress_tracker.enqueue('embed', 1)
 
