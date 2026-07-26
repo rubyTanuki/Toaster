@@ -8,13 +8,14 @@ from .base import EmbeddingStrategy
 
 _CACHE_DIR = Path.home() / ".cache" / "tostr" / "models" / "all-MiniLM-L6-v2"
 _HF_BASE = "https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main"
+_MODEL_FILENAME = "model.onnx" # model_qint8_arm64.onnx
 _ASSETS = {
-    "model.onnx": f"{_HF_BASE}/onnx/model.onnx",
+    _MODEL_FILENAME: f"{_HF_BASE}/onnx/{_MODEL_FILENAME}",
     "tokenizer.json": f"{_HF_BASE}/tokenizer.json",
 }
 # Minimum acceptable sizes catch truncated downloads before onnxruntime tries to parse them.
 _ASSET_MIN_SIZES = {
-    "model.onnx": 50 * 1024 * 1024,   # fp32 model is ~86 MB
+    _MODEL_FILENAME: 15 * 1024 * 1024,   # quantized model is ~23 MB
     "tokenizer.json": 100 * 1024,
 }
 _DOWNLOAD_HEADERS = {"User-Agent": "tostr/1.0"}
@@ -24,7 +25,7 @@ class OnnxEmbeddingStrategy(EmbeddingStrategy):
         super().__init__(batch_size=batch_size, batch_timeout=batch_timeout)
 
         self.model_dir = _CACHE_DIR
-        self.onnx_path = str(self.model_dir / "model.onnx")
+        self.onnx_path = str(self.model_dir / _MODEL_FILENAME)
         self.vocab_path = str(self.model_dir / "tokenizer.json")
 
         self._ensure_assets_present()
@@ -50,7 +51,7 @@ class OnnxEmbeddingStrategy(EmbeddingStrategy):
             return
 
         self.model_dir.mkdir(parents=True, exist_ok=True)
-        logger.info("First-time setup: downloading embedding model from Hugging Face Hub (~86 MB)...")
+        logger.info("First-time setup: downloading embedding model from Hugging Face Hub (~23 MB)...")
 
         for filename, url in _ASSETS.items():
             if self._asset_is_valid(filename):

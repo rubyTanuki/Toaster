@@ -2,6 +2,7 @@ from __future__ import annotations
 import asyncio
 import time
 from abc import ABC, abstractmethod
+from loguru import logger
 
 class EmbeddingStrategy(ABC):
     def __init__(self, batch_size: int = 32, batch_timeout: float = 1.5):
@@ -98,11 +99,16 @@ class EmbeddingClient:
 
         descriptions = [self._embedding_text(s) for s in batch]
 
-        # Offload the computation to the thread pool
-        embeddings = await asyncio.to_thread(
-            self.strategy.embed_batch, 
-            descriptions
-        )
+        try:
+            # Offload the computation to the thread pool
+            embeddings = await asyncio.to_thread(
+                self.strategy.embed_batch,
+                descriptions
+            )
+        except Exception:
+            # A failure here must not skip task_done() below; dont hang the whole batch
+            logger.exception(f"Embedding batch of {len(batch)} struct(s) failed; leaving them unembedded")
+            embeddings = [None] * len(batch)
 
         for struct, vector in zip(batch, embeddings):
             struct.vector = vector
@@ -115,7 +121,21 @@ class EmbeddingClient:
 
     async def drain_and_stop(self):
         """Blocks until the queue is completely empty, then halts the worker."""
-        await self.queue.join()
+        join_task = asyncio.ensure_future(self.queue.join())
+        waiters = {join_task}
+        if self._worker_task:
+            waiters.add(self._worker_task)
+
+        done, _ = await asyncio.wait(waiters, return_when=asyncio.FIRST_COMPLETED)
+
+        if join_task not in done:
+            join_task.cancel()
+            # The worker task finished (or crashed) before the queue drained.
+            if self._worker_task and not self._worker_task.cancelled():
+                exc = self._worker_task.exception()
+                if exc:
+                    raise exc
+            return
 
         if self._worker_task:
             self._worker_task.cancel()
