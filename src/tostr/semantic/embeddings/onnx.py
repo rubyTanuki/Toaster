@@ -32,17 +32,16 @@ class OnnxEmbeddingStrategy(EmbeddingStrategy):
         super().__init__(batch_size=batch_size, batch_timeout=batch_timeout)
 
         self.model_dir = _CACHE_DIR
-        self.onnx_path = str(self.model_dir / self.model_filename)
         self.vocab_path = str(self.model_dir / _TOKENIZER_FILENAME)
-
-        self._ensure_assets_present()
 
         import onnxruntime as ort
         from tokenizers import Tokenizer
 
+        self._ensure_asset(_TOKENIZER_FILENAME, f"{_HF_BASE}/{_TOKENIZER_FILENAME}")
         self.tokenizer = Tokenizer.from_file(self.vocab_path)
         self.tokenizer.enable_padding(pad_id=0, pad_token="[PAD]")
-        self.session = ort.InferenceSession(self.onnx_path, providers=["CPUExecutionProvider"])
+
+        self.onnx_path, self.session = self._load_session(ort)
 
     @property
     def dimensions(self) -> int:
@@ -54,64 +53,83 @@ class OnnxEmbeddingStrategy(EmbeddingStrategy):
         return _ARCH_MODELS.get(platform.machine().lower(), _FALLBACK_MODEL)
 
     @cached_property
-    def _assets(self) -> dict[str, str]:
-        """Filename -> download URL for every asset required by this architecture."""
-        return {
-            self.model_filename: f"{_HF_BASE}/onnx/{self.model_filename}",
-            _TOKENIZER_FILENAME: f"{_HF_BASE}/{_TOKENIZER_FILENAME}",
-        }
+    def _model_candidates(self) -> list[str]:
+        """Models to try in order: architecture-specific first, portable default last.
 
-    @cached_property
-    def _asset_min_sizes(self) -> dict[str, int]:
-        return {
-            self.model_filename: _MODEL_MIN_SIZE,
-            _TOKENIZER_FILENAME: _TOKENIZER_MIN_SIZE,
-        }
+        dict.fromkeys dedupes while preserving order (the arch model may already be the
+        fallback on unrecognized CPUs).
+        """
+        return list(dict.fromkeys([self.model_filename, _FALLBACK_MODEL]))
+
+    def _load_session(self, ort):
+        """Return (path, session) for the first candidate that downloads and initializes.
+
+        A quantized build can 404 or fail to run on an unexpected CPU. Rather than leave
+        the pipeline with no model at all, degrade to the portable model.onnx before
+        giving up entirely.
+        """
+        errors: list[str] = []
+        for filename in self._model_candidates:
+            try:
+                path = self._ensure_model(filename)
+                session = ort.InferenceSession(path, providers=["CPUExecutionProvider"])
+            except Exception as e:
+                logger.warning(f"Embedding model '{filename}' unavailable ({e}); trying next candidate.")
+                errors.append(f"{filename}: {e}")
+                continue
+            if filename != self.model_filename:
+                logger.warning(f"Falling back to portable embedding model '{filename}'.")
+            return path, session
+
+        raise RuntimeError(
+            "Could not initialize any embedding model. Tried:\n  " + "\n  ".join(errors)
+        )
+
+    @staticmethod
+    def _min_size(filename: str) -> int:
+        return _TOKENIZER_MIN_SIZE if filename == _TOKENIZER_FILENAME else _MODEL_MIN_SIZE
 
     def _asset_is_valid(self, filename: str) -> bool:
         dest = self.model_dir / filename
-        min_size = self._asset_min_sizes.get(filename, 0)
-        return dest.exists() and dest.stat().st_size >= min_size
+        return dest.exists() and dest.stat().st_size >= self._min_size(filename)
 
-    def _ensure_assets_present(self):
-        if all(self._asset_is_valid(f) for f in self._assets):
+    def _ensure_model(self, filename: str) -> str:
+        """Ensure a specific ONNX build is cached; returns its local path."""
+        self._ensure_asset(filename, f"{_HF_BASE}/onnx/{filename}")
+        return str(self.model_dir / filename)
+
+    def _ensure_asset(self, filename: str, url: str):
+        """Download one asset to the cache if missing/truncated. Raises on failure."""
+        if self._asset_is_valid(filename):
             return
 
         self.model_dir.mkdir(parents=True, exist_ok=True)
-        logger.info("First-time setup: downloading embedding model from Hugging Face Hub (~23 MB)...")
+        dest = self.model_dir / filename
+        dest.unlink(missing_ok=True)  # remove any partial file from a prior interrupted download
+        tmp = dest.with_suffix(".tmp")
+        logger.info(f"Downloading embedding asset {filename} from Hugging Face Hub ...")
+        try:
+            req = urllib.request.Request(url, headers=_DOWNLOAD_HEADERS)
+            with urllib.request.urlopen(req, timeout=60) as resp:
+                with open(tmp, "wb") as f:
+                    shutil.copyfileobj(resp, f)
+            tmp.rename(dest)
+        except Exception as e:
+            tmp.unlink(missing_ok=True)
+            raise RuntimeError(
+                f"Failed to download {filename} from Hugging Face Hub.\n"
+                f"URL: {url}\nError: {e}"
+            ) from e
 
-        for filename, url in self._assets.items():
-            if self._asset_is_valid(filename):
-                continue
-
-            dest = self.model_dir / filename
-            dest.unlink(missing_ok=True)  # remove any partial file from a prior interrupted download
-            tmp = dest.with_suffix(".tmp")
-            logger.info(f"Downloading {filename} ...")
-            try:
-                req = urllib.request.Request(url, headers=_DOWNLOAD_HEADERS)
-                with urllib.request.urlopen(req, timeout=60) as resp:
-                    with open(tmp, "wb") as f:
-                        shutil.copyfileobj(resp, f)
-                tmp.rename(dest)
-            except Exception as e:
-                tmp.unlink(missing_ok=True)
-                raise RuntimeError(
-                    f"Failed to download {filename} from Hugging Face Hub.\n"
-                    f"URL: {url}\nError: {e}"
-                ) from e
-
-            actual = dest.stat().st_size
-            min_size = self._asset_min_sizes.get(filename, 0)
-            if actual < min_size:
-                dest.unlink(missing_ok=True)
-                raise RuntimeError(
-                    f"Download of {filename} appears incomplete ({actual / 1024 / 1024:.1f} MB). "
-                    f"Expected at least {min_size // 1024 // 1024} MB. "
-                    f"Please try again."
-                )
-
-        logger.info("Embedding model cached to ~/.cache/tostr/")
+        actual = dest.stat().st_size
+        min_size = self._min_size(filename)
+        if actual < min_size:
+            dest.unlink(missing_ok=True)
+            raise RuntimeError(
+                f"Download of {filename} appears incomplete ({actual / 1024 / 1024:.1f} MB). "
+                f"Expected at least {min_size // 1024 // 1024} MB. "
+                f"Please try again."
+            )
 
     def _execute_onnx(self, texts: list[str]) -> list[list[float]]:
         """Executes compiled math graph using tokenizers and ONNX runtime layers."""
