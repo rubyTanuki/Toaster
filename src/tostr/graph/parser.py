@@ -3,6 +3,7 @@ from pathlib import Path
 from abc import ABC
 import asyncio
 import hashlib
+import numpy as np
 from loguru import logger
 
 from tostr.core.models import BaseFile, Directory, BaseStruct
@@ -152,3 +153,40 @@ class BaseParser(ABC):
             await describer.describe(self.registry.root)
 
         await self.embedder.drain_and_stop()
+
+        # Directory vectors are centroids of their subtree's file vectors, so they can only be
+        # computed once every leaf embed has landed — i.e. after the embedder drains.
+        self._compute_directory_centroids()
+
+    def _compute_directory_centroids(self):
+        """Assign each directory a vector = normalize(mean of all file vectors in its subtree),
+        replacing the removed LLM directory description as the directory's search embedding.
+        Post-order fold of raw FILE vectors (a directory's direct children are only files and
+        subdirectories, so folding files never double-counts a file against its own methods);
+        mass-weighted by file count. Full-parse only — the watcher's file-rooted parse has no
+        Directory root, so this is a no-op there."""
+        root = self.registry.root if self.registry else None
+        if not isinstance(root, Directory):
+            return
+
+        def fold(directory: Directory):  # -> (sum_vec | None, file_count)
+            acc, count = None, 0
+            for child in directory.all_children:
+                if isinstance(child, Directory):
+                    csum, ccount = fold(child)
+                elif isinstance(child, BaseFile) and child.vector is not None:
+                    csum, ccount = np.asarray(child.vector, dtype=float), 1
+                else:
+                    continue
+                if csum is not None:
+                    acc = csum if acc is None else acc + csum
+                    count += ccount
+            if count and acc is not None:
+                mean = acc / count
+                norm = np.linalg.norm(mean)
+                directory.vector = (mean / norm).tolist() if norm > 1e-9 else mean.tolist()
+            else:
+                directory.vector = None
+            return acc, count
+
+        fold(root)
