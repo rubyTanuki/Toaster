@@ -128,7 +128,11 @@ class SqliteClient:
             # pragma moves into `get_connection`.
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS notes (
-                    id INTEGER PRIMARY KEY,
+                    -- AUTOINCREMENT so a deleted note's id is never handed to a later note: ids
+                    -- are surfaced to users and agents by `inspect`, who may act on one long
+                    -- after reading it, and silently retargeting that edit would be worse than
+                    -- failing it.
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
                     struct_id TEXT NOT NULL,
                     content TEXT NOT NULL,
                     author TEXT,

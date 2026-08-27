@@ -1,10 +1,12 @@
 from __future__ import annotations
 import asyncio
+import os
 import re
+import subprocess
 import time
 from pathlib import Path
 import typer
-from typing import Annotated, List, Union
+from typing import Annotated, List, Optional, Union
 from loguru import logger
 from tostr.exceptions import TostrError
 
@@ -16,6 +18,9 @@ from tostr.commands import (
     init_project,
     parse_async,
     inspect_async,
+    note_add_async,
+    note_edit_async,
+    note_remove_async,
     skeleton_async,
     watch_async,
     clean_db,
@@ -43,6 +48,15 @@ app = typer.Typer(
     add_completion=False # Optional: Turns off the auto-generated completion install command for cleaner help menus
 )
 
+note_app = typer.Typer(
+    name="note",
+    help="Attach human-authored notes to a struct. Notes live alongside the code in the cache, "
+         "survive reparses, and surface at the top of `tostr inspect`.",
+    no_args_is_help=True,
+)
+app.add_typer(note_app)
+
+
 class TostrHighlighter(RegexHighlighter):
     """Applies beautiful visual formatting to the custom .tost human layout."""
     base_style = "tostr."
@@ -56,7 +70,9 @@ class TostrHighlighter(RegexHighlighter):
         # Capture dependency symbols (<, >, ~)
         r"(?P<edge>[<>\~])",
         # Capture structural sections blocks headers (fields:, methods:)
-        r"(?P<section>fields:|methods:)"
+        r"(?P<section>fields:|methods:)",
+        # Capture human-authored notes (# [3] avery (2026-08-25): ...)
+        r"(?P<note>#\s\[\d+\][^\n]*)"
     ]
 
 # Define an immersive terminal theme layout
@@ -66,6 +82,9 @@ theme = Theme({
     "tostr.line_num": "green",
     "tostr.edge": "bold magenta",
     "tostr.section": "bold yellow",
+    # Notes read as dim commentary like descriptions, but tinted so a human annotation is
+    # distinguishable from an AI-generated `//` summary at a glance.
+    "tostr.note": "dim italic cyan",
 })
 
 console = Console(highlighter=TostrHighlighter(), theme=theme)
@@ -486,6 +505,11 @@ def _render_inspect(result: Union[InspectResult, str], pretty: bool = True, lang
         desc = f"// {result.description}"
         console.print(Text(desc, style="tostr.comment"))
 
+    # Notes
+    for note in result.notes:
+        stamp = note.date_last_updated or note.date_added
+        console.print(Text(f"# [{note.id}] {note.author} ({stamp}): {note.content}", style="tostr.note"))
+
     # Edges
     if result.inbound_edges:
         edge_text = Text("< ", style="tostr.edge")
@@ -637,6 +661,94 @@ def inspect(
     end_time = time.perf_counter()
     elapsed_time = end_time - start_time
     logger.debug(f"Finished in {elapsed_time:.4f} seconds.")
+
+
+def _default_author() -> str:
+    """Best guess at who is writing: the git identity, then the shell user. Notes are attributed
+    so a reader knows whether a claim came from a teammate or from tooling."""
+    try:
+        name = subprocess.run(
+            ["git", "config", "user.name"], capture_output=True, text=True, timeout=2
+        ).stdout.strip()
+        if name:
+            return name
+    except (OSError, subprocess.SubprocessError):
+        pass
+    return os.environ.get("USER") or os.environ.get("USERNAME") or "unknown"
+
+
+_STRUCT_ARG = typer.Argument(help="Struct ID (e.g. M-bc1cb7aeff) or UID to annotate")
+_PATH_OPT = typer.Option(
+    ".",
+    "--path", "-p",
+    help="Path to the project directory",
+    exists=True, file_okay=False, dir_okay=True, resolve_path=True,
+)
+
+
+def _echo_note(struct, note, verb: str):
+    console.print(f"{verb} note [{note.id}] on ", end="")
+    console.print(Text(struct.id, style="tostr.uid"), end="")
+    console.print(f" | {struct.uid}")
+    if note.content:
+        console.print(Text(f"# [{note.id}] {note.author} ({note.date_last_updated:%Y-%m-%d}): "
+                           f"{note.content}", style="tostr.note"))
+
+
+@note_app.command("add")
+def note_add(
+    struct: Annotated[str, _STRUCT_ARG],
+    content: Annotated[str, typer.Argument(help="The note text")],
+    path: Annotated[Path, _PATH_OPT] = Path("."),
+    author: Annotated[Optional[str], typer.Option("--author", "-a", help="Attribution for the note (defaults to your git user.name)")] = None,
+    debug: Annotated[bool, typer.Option("--debug/--no-debug", "-d/-nd", help="Enable debug logging")] = False,
+):
+    """Attach a note to a struct."""
+    configure_cli_logging(debug)
+    try:
+        s, note = asyncio.run(note_add_async(struct, content, author or _default_author(), path))
+        _echo_note(s, note, "✅ Added")
+    except TostrError as e:
+        typer.secho(f"❌ Error: {e}", fg="red", err=True)
+        raise typer.Exit(code=1)
+
+
+@note_app.command("edit")
+def note_edit(
+    struct: Annotated[str, _STRUCT_ARG],
+    note_id: Annotated[int, typer.Argument(help="Note id, shown in brackets by `tostr inspect`")],
+    content: Annotated[str, typer.Argument(help="The replacement note text")],
+    path: Annotated[Path, _PATH_OPT] = Path("."),
+    author: Annotated[Optional[str], typer.Option("--author", "-a", help="Attribution for the edit (defaults to your git user.name)")] = None,
+    debug: Annotated[bool, typer.Option("--debug/--no-debug", "-d/-nd", help="Enable debug logging")] = False,
+):
+    """Rewrite an existing note."""
+    configure_cli_logging(debug)
+    try:
+        s, note = asyncio.run(note_edit_async(struct, note_id, content, author or _default_author(), path))
+        _echo_note(s, note, "✅ Edited")
+    except TostrError as e:
+        typer.secho(f"❌ Error: {e}", fg="red", err=True)
+        raise typer.Exit(code=1)
+
+
+@note_app.command("remove")
+def note_remove(
+    struct: Annotated[str, _STRUCT_ARG],
+    note_id: Annotated[int, typer.Argument(help="Note id, shown in brackets by `tostr inspect`")],
+    path: Annotated[Path, _PATH_OPT] = Path("."),
+    debug: Annotated[bool, typer.Option("--debug/--no-debug", "-d/-nd", help="Enable debug logging")] = False,
+):
+    """Detach a note from a struct and delete it."""
+    configure_cli_logging(debug)
+    try:
+        s, note = asyncio.run(note_remove_async(struct, note_id, path))
+        console.print(f"✅ Removed note [{note_id}] from ", end="")
+        console.print(Text(s.id, style="tostr.uid"), end="")
+        console.print(f" | {s.uid}")
+    except TostrError as e:
+        typer.secho(f"❌ Error: {e}", fg="red", err=True)
+        raise typer.Exit(code=1)
 
 
 @app.command()

@@ -16,6 +16,9 @@ from tostr.commands import (
     init_project,
     parse_async,
     inspect_async,
+    note_add_async,
+    note_edit_async,
+    note_remove_async,
     skeleton_async,
     watch_async,
     clean_db,
@@ -195,7 +198,13 @@ def _render_inspect(result: Union[InspectResult, str]) -> str:
             header = f"{result.id} | {result.filepath}"
             
     lines.append(header)
-    
+
+    # Notes are human-authored, so they precede everything Tostr derived itself. The bracketed id
+    # is the handle `note_edit` / `note_remove` take.
+    for note in result.notes:
+        stamp = note.date_last_updated or note.date_added
+        lines.append(f"# [{note.id}] {note.author} ({stamp}): {note.content}")
+
     total_children = len(result.fields) + len(result.methods) + len(result.classes) + len(result.files) + len(result.directories)
     if result.description and total_children != 1:
         lines.append(f"// {result.description}")
@@ -262,6 +271,9 @@ async def inspect_by_id(workspace_path: str, ids: Union[str, List[str]], include
     - `<` : Inbound dependency. The listed ID calls or uses this struct.
     - `~` : Related or sibling struct (e.g., in the same file or closely coupled).
     - `//`: AI-generated or docstring summary of the code.
+    - `#` : A human-authored note left on this struct, shown as `# [id] author (date): text`.
+            Notes are commentary the code itself does not carry — treat them as authoritative
+            about intent. Manage them with note_add / note_edit / note_remove.
 
     Args:
         workspace_path: The ABSOLUTE path to the project workspace. DO NOT use '.' or relative paths.
@@ -299,6 +311,9 @@ async def inspect_by_uid(workspace_path: str, uids: Union[str, List[str]], inclu
     - `<` : Inbound dependency. The listed ID calls or uses this struct.
     - `~` : Related or sibling struct (e.g., in the same file or closely coupled).
     - `//`: AI-generated or docstring summary of the code.
+    - `#` : A human-authored note left on this struct, shown as `# [id] author (date): text`.
+            Notes are commentary the code itself does not carry — treat them as authoritative
+            about intent. Manage them with note_add / note_edit / note_remove.
 
     Args:
         workspace_path: The ABSOLUTE path to the project workspace. DO NOT use '.' or relative paths.
@@ -322,6 +337,68 @@ async def inspect_by_uid(workspace_path: str, uids: Union[str, List[str]], inclu
             final_output = "\n".join(lines[:max_lines]) + f"\n...[OUTPUT TRUNCATED AT {max_lines} LINES] - Use a higher 'max_lines' to see more."
             
         return final_output
+    except TostrError as e:
+        return f"Error: {e}"
+
+@mcp.tool()
+async def note_add(workspace_path: str, struct: str, content: str, author: str = "agent") -> str:
+    """
+    Attach a note to a struct: durable commentary that the source code does not carry.
+
+    Notes persist in the cache, survive reparses and edits to the file, and appear at the top of
+    every subsequent inspect of that struct. Use this to record things a future reader could not
+    recover from the code alone — a non-obvious invariant, why an approach was rejected, a known
+    bug, a link to the decision behind it. Do not restate what the code or its `//` summary
+    already says.
+
+    Args:
+        workspace_path: The ABSOLUTE path to the project workspace. DO NOT use '.' or relative paths.
+        struct: The Tostr ID (e.g. M-bc1cb7aeff) or UID of the struct to annotate.
+        content: The note text.
+        author: Attribution for the note. Pass the human's name when recording their words.
+    """
+    try:
+        target_path = _resolve_workspace(workspace_path)
+        struct_obj, note = await note_add_async(struct, content, author, target_path)
+        return (f"Added note [{note.id}] to {struct_obj.id} | {struct_obj.uid}\n"
+                f"# [{note.id}] {note.author}: {note.content}")
+    except TostrError as e:
+        return f"Error: {e}"
+
+@mcp.tool()
+async def note_edit(workspace_path: str, struct: str, note_id: int, content: str, author: str = "agent") -> str:
+    """
+    Rewrite an existing note on a struct, in place.
+
+    Args:
+        workspace_path: The ABSOLUTE path to the project workspace. DO NOT use '.' or relative paths.
+        struct: The Tostr ID or UID of the annotated struct.
+        note_id: The note's id, shown in brackets by inspect (e.g. `# [3] ...` is note_id 3).
+        content: The replacement note text.
+        author: Attribution for the edit.
+    """
+    try:
+        target_path = _resolve_workspace(workspace_path)
+        struct_obj, note = await note_edit_async(struct, note_id, content, author, target_path)
+        return (f"Edited note [{note.id}] on {struct_obj.id} | {struct_obj.uid}\n"
+                f"# [{note.id}] {note.author}: {note.content}")
+    except TostrError as e:
+        return f"Error: {e}"
+
+@mcp.tool()
+async def note_remove(workspace_path: str, struct: str, note_id: int) -> str:
+    """
+    Detach a note from a struct and delete it. This is not reversible.
+
+    Args:
+        workspace_path: The ABSOLUTE path to the project workspace. DO NOT use '.' or relative paths.
+        struct: The Tostr ID or UID of the annotated struct.
+        note_id: The note's id, shown in brackets by inspect (e.g. `# [3] ...` is note_id 3).
+    """
+    try:
+        target_path = _resolve_workspace(workspace_path)
+        struct_obj, _ = await note_remove_async(struct, note_id, target_path)
+        return f"Removed note [{note_id}] from {struct_obj.id} | {struct_obj.uid}"
     except TostrError as e:
         return f"Error: {e}"
 

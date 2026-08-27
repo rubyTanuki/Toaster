@@ -44,8 +44,14 @@ or the task is not about code comprehension, just use native tools.
 4. **Read implementation + dependencies** with `inspect` (by id or uid). Request the
    body only when you actually need the source. Inspect output encodes the dependency
    graph: `>` outbound (this struct depends on the listed id), `<` inbound (the listed
-   id uses this struct), `~` related/sibling, `//` AI/docstring summary. Use these edges
-   to trace call paths instead of grepping for identifiers across the tree.
+   id uses this struct), `~` related/sibling, `//` AI/docstring summary, `#` a
+   human-authored note. Use these edges to trace call paths instead of grepping for
+   identifiers across the tree.
+5. **Record what the code can't say** with `note_add` — durable commentary pinned to a
+   struct, shown at the top of every later `inspect` and preserved across reparses. Use
+   it for non-obvious invariants, rejected approaches, known bugs, or the reasoning
+   behind a decision; not for restating what the code or its `//` summary already says.
+   `note_edit` / `note_remove` maintain them.
 
 Typical loop: `skeleton` (orient) → `search` (locate) → `inspect` (understand + follow
 edges) → repeat as you walk the graph.

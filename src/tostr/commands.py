@@ -277,6 +277,63 @@ async def inspect_async(struct_ids: list[str], project_path: Path, include_body:
         
     return results
 
+#region NOTES
+
+def _resolve_struct(struct_ref: str, project_path: Path):
+    """Load the struct named by an id or uid, with its notes attached. Returns
+    `(cache, struct)`; the cache is the write handle the note operations need."""
+    _verify_db_exists(project_path)
+
+    paths = ProjectPaths(project_path)
+    cache = StructCache(paths, struct_store=Registry(paths))
+
+    if not struct_ref.startswith(("S-", "C-", "M-", "V-", "F-", "D-")):
+        resolved = resolve_uid_to_id(struct_ref, project_path)
+        if resolved:
+            struct_ref = resolved
+
+    struct = cache.get_struct_by_id(struct_ref)
+    if struct is None:
+        raise TostrError(f"Struct not found with id/uid '{struct_ref}'.")
+    cache.notes_for(struct)
+    return cache, struct
+
+
+def _find_note(struct, note_id: int):
+    for note in struct.notes:
+        if note.id == note_id:
+            return note
+    raise TostrError(
+        f"Struct {struct.id} has no note {note_id}. "
+        f"Existing note ids: {[n.id for n in struct.notes] or 'none'}."
+    )
+
+
+async def note_add_async(struct_ref: str, content: str, author: str, project_path: Path):
+    """Attach a note to a struct. Returns `(struct, note)`."""
+    cache, struct = _resolve_struct(struct_ref, project_path)
+    note = cache.add_note(struct, content, author)
+    return struct, note
+
+
+async def note_edit_async(struct_ref: str, note_id: int, content: str, author: str, project_path: Path):
+    """Rewrite an existing note in place. Returns `(struct, note)`."""
+    cache, struct = _resolve_struct(struct_ref, project_path)
+    note = _find_note(struct, note_id)
+    cache.edit_note(note, content, author, struct=struct)
+    return struct, note
+
+
+async def note_remove_async(struct_ref: str, note_id: int, project_path: Path):
+    """Detach a note from a struct and drop its row. Returns `(struct, note)`."""
+    cache, struct = _resolve_struct(struct_ref, project_path)
+    note = _find_note(struct, note_id)
+    cache.delete_note(struct, note)
+    return struct, note
+
+
+#endregion
+
 async def skeleton_async(subpath: str, project_path: Path, depth: int = 7, files_only: bool = False):
     _verify_db_exists(project_path)
 

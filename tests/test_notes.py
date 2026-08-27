@@ -66,6 +66,14 @@ def test_replace_struct_notes_is_exact(db):
     assert [r["id"] for r in rows] == note_ids
 
 
+def test_ids_are_not_reused_after_delete(db):
+    """Note ids are shown to users and agents, who may act on one long after reading it —
+    AUTOINCREMENT keeps a stale id from silently addressing a different note."""
+    first = db.insert_note("M-1", "a", "avery", "t", "t")
+    db.delete_note(first)
+    assert db.insert_note("M-1", "b", "avery", "t", "t") != first
+
+
 def test_delete_notes_for_structs(db):
     db.insert_note("M-1", "a", "avery", "t", "t")
     db.insert_note("M-2", "b", "avery", "t", "t")
@@ -76,7 +84,7 @@ def test_delete_notes_for_structs(db):
 
 #endregion
 
-#region CACHE INTEGRATION
+#region INSPECT / COMMAND SURFACE
 
 
 @pytest.fixture
@@ -186,6 +194,95 @@ async def test_date_added_is_preserved_across_reparse(project):
     await parse_async(project, no_llm=True)
     _, registry2 = await _parsed_cache(project)
     assert registry2.uid_map[struct.uid].date_added == original
+
+
+#endregion
+
+
+@pytest.mark.integration
+async def test_inspect_dump_carries_notes(project):
+    from tostr.commands import inspect_async, note_add_async
+
+    cache, registry = await _parsed_cache(project)
+    struct = _a_method(registry)
+    await note_add_async(struct.id, "load-bearing invariant", "avery", project)
+
+    result = (await inspect_async([struct.id], project))[0]
+    assert [n.content for n in result.notes] == ["load-bearing invariant"]
+    assert result.notes[0].author == "avery"
+    assert result.notes[0].id is not None
+
+
+@pytest.mark.integration
+async def test_renderers_put_notes_above_the_description(project):
+    """Both the CLI and MCP renderers must place notes between the header and everything
+    Tostr derived itself."""
+    from tostr.commands import inspect_async, note_add_async
+    from tostr.server import _render_inspect as render_mcp
+
+    cache, registry = await _parsed_cache(project)
+    struct = next(s for s in registry.uid_map.values()
+                  if type(s).__name__ == "BaseMethod" and s.description)
+    await note_add_async(struct.id, "a human said this", "avery", project)
+
+    result = (await inspect_async([struct.id], project))[0]
+    lines = render_mcp(result).splitlines()
+    note_line = next(i for i, l in enumerate(lines) if l.startswith("# ["))
+    desc_line = next(i for i, l in enumerate(lines) if l.startswith("// "))
+    assert 0 < note_line < desc_line
+    assert "a human said this" in lines[note_line]
+    assert "avery" in lines[note_line]
+
+    # The CLI renderer writes to a rich Console; capture it the same way.
+    from rich.console import Console
+    import tostr.cli as cli
+
+    buffer = Console(record=True, width=200)
+    original, cli.console = cli.console, buffer
+    try:
+        cli._render_inspect(result)
+    finally:
+        cli.console = original
+    cli_lines = [l for l in buffer.export_text().splitlines() if l.strip()]
+    cli_note = next(i for i, l in enumerate(cli_lines) if l.startswith("# ["))
+    cli_desc = next(i for i, l in enumerate(cli_lines) if l.startswith("// "))
+    assert 0 < cli_note < cli_desc
+
+
+@pytest.mark.integration
+async def test_note_commands_round_trip(project):
+    from tostr.commands import note_add_async, note_edit_async, note_remove_async, inspect_async
+
+    cache, registry = await _parsed_cache(project)
+    struct = _a_method(registry)
+
+    _, note = await note_add_async(struct.uid, "first take", "avery", project)  # resolves by uid
+    _, edited = await note_edit_async(struct.id, note.id, "second take", "sam", project)
+    assert edited.id == note.id
+
+    result = (await inspect_async([struct.id], project))[0]
+    assert [(n.content, n.author) for n in result.notes] == [("second take", "sam")]
+
+    await note_remove_async(struct.id, note.id, project)
+    assert (await inspect_async([struct.id], project))[0].notes == []
+
+
+@pytest.mark.integration
+async def test_note_commands_reject_bad_references(project):
+    from tostr.commands import note_add_async, note_remove_async
+    from tostr.exceptions import TostrError
+
+    cache, registry = await _parsed_cache(project)
+    struct = _a_method(registry)
+
+    with pytest.raises(TostrError, match="Struct not found"):
+        await note_add_async("M-0000000000", "orphan", "avery", project)
+
+    _, note = await note_add_async(struct.id, "real note", "avery", project)
+    with pytest.raises(TostrError, match="has no note 999"):
+        await note_remove_async(struct.id, 999, project)
+    # The failed lookup must not have disturbed the real note.
+    assert len(cache.db.notes_for_structs([struct.id])) == 1
 
 
 #endregion

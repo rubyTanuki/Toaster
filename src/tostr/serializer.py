@@ -7,12 +7,24 @@ from dataclasses import dataclass, field
 from typing import List, Optional, Union
 
 @dataclass
+class NoteResult:
+    """A struct's human-authored note, flattened for rendering. `id` is what `tostr note
+    edit/remove` addresses, so it has to survive into the output."""
+    id: Optional[int]
+    content: str
+    author: str = ""
+    date_added: str = ""
+    date_last_updated: str = ""
+
+
+@dataclass
 class InspectResult:
     id: str
     uid: str
     filepath: str
     signature: str = ""
     description: str = ""
+    notes: List[NoteResult] = field(default_factory=list)
     inbound_edges: List[str] = field(default_factory=list)
     outbound_edges: List[str] = field(default_factory=list)
     fields: List[InspectResult] = field(default_factory=list)
@@ -89,6 +101,16 @@ class tost:
             filepath=str(obj.path) if obj.path else "",
             signature=getattr(obj, 'signature', ""),
             description=obj.description,
+            notes=[
+                NoteResult(
+                    id=n.id,
+                    content=n.content,
+                    author=n.author,
+                    date_added=n.date_added.strftime("%Y-%m-%d"),
+                    date_last_updated=n.date_last_updated.strftime("%Y-%m-%d"),
+                )
+                for n in obj.notes
+            ],
             inbound_edges=obj.inbound_dependency_strings,
             outbound_edges=obj.outbound_dependency_strings,
             # Code structs and files both carry a body; emit it on request. Directories
