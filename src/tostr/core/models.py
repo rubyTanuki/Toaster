@@ -6,11 +6,63 @@ import json
 import hashlib
 from pathlib import Path
 
+from datetime import datetime
+
 from loguru import logger
 
 if TYPE_CHECKING:
     from tostr.graph.registry import Registry
     from tree_sitter import Node
+
+
+def parse_timestamp(value) -> datetime:
+    """Accept either an ISO string (as stored in SQLite) or a datetime, always yielding a datetime."""
+    if isinstance(value, datetime):
+        return value
+    if value:
+        try:
+            return datetime.fromisoformat(value)
+        except (ValueError, TypeError):
+            pass
+    return datetime.now()
+
+
+@dataclass
+class Note:
+    """A note attached and managed by a struct, i.e. a comment outside the source code"""
+    content: str = ""
+    author: str = ""
+    date_added: datetime = field(default_factory=datetime.now)
+    date_last_updated: datetime = field(default_factory=datetime.now)
+    # Primary key of the backing `notes` row; None until the note has been persisted. This is
+    # the handle every note write op (edit/delete) addresses, so an edited note updates its row
+    # in place instead of accumulating duplicates.
+    id: Optional[int] = None
+
+    def edit(self, new_content: str, author: str):
+        self.content = new_content
+        self.author = author
+        self.date_last_updated = datetime.now()
+
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "content": self.content,
+            "author": self.author,
+            "date_added": self.date_added.isoformat(),
+            "date_last_updated": self.date_last_updated.isoformat(),
+        }
+
+    @classmethod
+    def from_dict(cls, d: dict) -> Note:
+        return cls(
+            content=d.get("content", "") or "",
+            author=d.get("author", "") or "",
+            date_added=parse_timestamp(d.get("date_added")),
+            date_last_updated=parse_timestamp(d.get("date_last_updated")),
+            id=d.get("id"),
+        )
+
 
 @dataclass(eq=False)
 class BaseStruct(ABC):
@@ -48,6 +100,22 @@ class BaseStruct(ABC):
     children: Dict[str, BaseStruct] = field(default_factory=dict)
     path: Path = None
     diff_hash: str = ""
+
+    notes: List[Note] = field(default_factory=list)
+    _max_notes: int = 10
+    def add_note(self, content: str, author: str):
+        """Attach a note in memory. Persisting it is the storage layer's job — go through
+        `StructCache.add_note` when the note should survive the process."""
+        note = Note(content=content, author=author)
+        self.notes.append(note)
+        # Cap the ring: oldest notes fall off first so a struct can't grow an unbounded log.
+        if len(self.notes) > self._max_notes:
+            self.notes = self.notes[-self._max_notes:]
+        self.date_last_updated = datetime.now()
+        return note
+
+    date_added: datetime = field(default_factory=datetime.now)
+    date_last_updated: datetime = field(default_factory=datetime.now)
     
     _IDPREFIX: ClassVar[str] = "S"
 
@@ -55,14 +123,6 @@ class BaseStruct(ABC):
     _all_children_cache: Optional[List[BaseStruct]] = field(default=None, init=False, repr=False)
     _type_caches: Dict[type, List[BaseStruct]] = field(default_factory=dict, init=False, repr=False)
 
-    def get_children_by_type(self, type_cls: type) -> List[BaseStruct]:
-        if type_cls in self._type_caches:
-            return self._type_caches[type_cls]
-        
-        children = [child for child in self.all_children if isinstance(child, type_cls)]
-        self._type_caches[type_cls] = children
-        return children
-    
     @property
     def extension(self) -> str:
         """File extension this struct originates from (e.g. '.py'), used to route
@@ -77,6 +137,15 @@ class BaseStruct(ABC):
             all_children.extend(child_set)
         self._all_children_cache = all_children
         return all_children
+        
+
+    def get_children_by_type(self, type_cls: type) -> List[BaseStruct]:
+        if type_cls in self._type_caches:
+            return self._type_caches[type_cls]
+        
+        children = [child for child in self.all_children if isinstance(child, type_cls)]
+        self._type_caches[type_cls] = children
+        return children
     
     @property
     def directories(self):
@@ -196,6 +265,11 @@ class BaseStruct(ABC):
             "diff_hash": self.diff_hash,
             "inbound_dependency_strings": self.inbound_dependency_strings,
             "outbound_dependency_strings": self.outbound_dependency_strings,
+            # `notes` is routed to the `notes` table by the storage layer (like `vector`),
+            # not to a `structs` column — see StructCache.save_to_cache.
+            "notes": [note.to_dict() for note in self.notes],
+            "date_added": self.date_added.isoformat(),
+            "date_last_updated": self.date_last_updated.isoformat()
         }
         if self.vector is not None:
             data["vector"] = self.vector

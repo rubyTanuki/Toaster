@@ -16,6 +16,9 @@ from tostr.commands import (
     init_project,
     parse_async,
     inspect_async,
+    note_add_async,
+    note_edit_async,
+    note_remove_async,
     skeleton_async,
     watch_async,
     clean_db,
@@ -184,6 +187,7 @@ def _render_inspect(result: Union[InspectResult, str]) -> str:
     
     header = f"{result.id} | {result.uid}"
     if result.type in ["BaseClass", "BaseMethod", "BaseField"]:
+        lines.append(f"Filepath: {result.filepath}")
         if result.start_line != result.end_line:
             header = f"{result.id} @L{result.start_line}-{result.end_line} | {result.signature}"
         else:
@@ -195,10 +199,16 @@ def _render_inspect(result: Union[InspectResult, str]) -> str:
             header = f"{result.id} | {result.filepath}"
             
     lines.append(header)
-    
+
     total_children = len(result.fields) + len(result.methods) + len(result.classes) + len(result.files) + len(result.directories)
     if result.description and total_children != 1:
         lines.append(f"// {result.description}")
+
+    # Notes annotate the description rather than replace it: the summary is the core context, so
+    # it leads and notes follow. The bracketed id is what `note_edit` / `note_remove` take.
+    for note in result.notes:
+        stamp = note.date_last_updated or note.date_added
+        lines.append(f"# [{note.id}] {note.author} ({stamp}): {note.content}")
     
     if result.inbound_edges:
         lines.append(f"< {', '.join(result.inbound_edges)}")
@@ -262,6 +272,10 @@ async def inspect_by_id(workspace_path: str, ids: Union[str, List[str]], include
     - `<` : Inbound dependency. The listed ID calls or uses this struct.
     - `~` : Related or sibling struct (e.g., in the same file or closely coupled).
     - `//`: AI-generated or docstring summary of the code.
+    - `#` : A note pinned to this struct, shown as `# [id] author (date): text`. Notes are
+            durable memory left by earlier sessions (or by the user) for things the code does
+            not record. Read them before re-deriving anything about this struct, and treat them
+            as authoritative about intent. Manage them with note_add / note_edit / note_remove.
 
     Args:
         workspace_path: The ABSOLUTE path to the project workspace. DO NOT use '.' or relative paths.
@@ -299,6 +313,10 @@ async def inspect_by_uid(workspace_path: str, uids: Union[str, List[str]], inclu
     - `<` : Inbound dependency. The listed ID calls or uses this struct.
     - `~` : Related or sibling struct (e.g., in the same file or closely coupled).
     - `//`: AI-generated or docstring summary of the code.
+    - `#` : A note pinned to this struct, shown as `# [id] author (date): text`. Notes are
+            durable memory left by earlier sessions (or by the user) for things the code does
+            not record. Read them before re-deriving anything about this struct, and treat them
+            as authoritative about intent. Manage them with note_add / note_edit / note_remove.
 
     Args:
         workspace_path: The ABSOLUTE path to the project workspace. DO NOT use '.' or relative paths.
@@ -326,6 +344,87 @@ async def inspect_by_uid(workspace_path: str, uids: Union[str, List[str]], inclu
         return f"Error: {e}"
 
 @mcp.tool()
+async def note_add(workspace_path: str, struct: str, content: str, author: str = "agent") -> str:
+    """
+    Pin a durable note to a struct. This is your memory across sessions.
+
+    Anything you learn about a struct is otherwise lost when the session ends, and the only place
+    to persist it is the source file itself — which means a docstring or comment written for you
+    rather than for the people reading the code. A note goes in the Tostr cache instead: it
+    survives reparses and edits, and it is shown right under the summary on every later inspect of
+    that struct, so a future session sees it without knowing to look.
+
+    Write a note when you learned something that cost real effort and is not recoverable by
+    reading the code again:
+    - a non-obvious invariant or ordering constraint callers depend on
+    - a gotcha you hit, and what the symptom looked like
+    - an approach you tried that failed, and why (so the next session does not retry it)
+    - the reasoning behind a decision, or a pointer to the issue/PR holding it
+    - the state of in-progress work you are handing off
+
+    Do not write a note that restates the code, duplicates the `//` summary, or narrates what you
+    just did. Prefer editing an existing note over stacking near-duplicates; a struct keeps only
+    its most recent notes.
+
+    Args:
+        workspace_path: The ABSOLUTE path to the project workspace. DO NOT use '.' or relative paths.
+        struct: The Tostr ID (e.g. M-bc1cb7aeff) or UID of the struct to annotate.
+        content: The note text.
+        author: Attribution. Defaults to "agent"; pass the user's name when recording their words,
+            or your own agent/model name to distinguish yourself from other sessions.
+    """
+    try:
+        target_path = _resolve_workspace(workspace_path)
+        struct_obj, note = await note_add_async(struct, content, author, target_path)
+        return (f"Added note [{note.id}] to {struct_obj.id} | {struct_obj.uid}\n"
+                f"# [{note.id}] {note.author}: {note.content}")
+    except TostrError as e:
+        return f"Error: {e}"
+
+@mcp.tool()
+async def note_edit(workspace_path: str, struct: str, note_id: int, content: str, author: str = "agent") -> str:
+    """
+    Rewrite an existing note on a struct, in place.
+
+    Prefer this over adding a second note when what you know has changed or become more precise —
+    a struct keeps only its most recent notes, so near-duplicates push out older, still-useful ones.
+
+    Args:
+        workspace_path: The ABSOLUTE path to the project workspace. DO NOT use '.' or relative paths.
+        struct: The Tostr ID or UID of the annotated struct.
+        note_id: The note's id, shown in brackets by inspect (e.g. `# [3] ...` is note_id 3).
+        content: The replacement note text.
+        author: Attribution for the edit.
+    """
+    try:
+        target_path = _resolve_workspace(workspace_path)
+        struct_obj, note = await note_edit_async(struct, note_id, content, author, target_path)
+        return (f"Edited note [{note.id}] on {struct_obj.id} | {struct_obj.uid}\n"
+                f"# [{note.id}] {note.author}: {note.content}")
+    except TostrError as e:
+        return f"Error: {e}"
+
+@mcp.tool()
+async def note_remove(workspace_path: str, struct: str, note_id: int) -> str:
+    """
+    Detach a note from a struct and delete it. This is not reversible.
+
+    Remove a note once it has gone stale or wrong — a note that no longer matches the code is worse
+    than no note, since later sessions will trust it.
+
+    Args:
+        workspace_path: The ABSOLUTE path to the project workspace. DO NOT use '.' or relative paths.
+        struct: The Tostr ID or UID of the annotated struct.
+        note_id: The note's id, shown in brackets by inspect (e.g. `# [3] ...` is note_id 3).
+    """
+    try:
+        target_path = _resolve_workspace(workspace_path)
+        struct_obj, _ = await note_remove_async(struct, note_id, target_path)
+        return f"Removed note [{note_id}] from {struct_obj.id} | {struct_obj.uid}"
+    except TostrError as e:
+        return f"Error: {e}"
+
+@mcp.tool()
 async def clean(workspace_path: str, purge: bool = False) -> str:
     """
     Remove the generated .tostr/ cache for a workspace and stop its background watcher.
@@ -345,10 +444,14 @@ async def clean(workspace_path: str, purge: bool = False) -> str:
 @mcp.tool()
 async def export(workspace_path: str, with_vectors: bool = False) -> str:
     """
-    Snapshot the project's LLM-generated descriptions to a committed tostr.lock.json so teammates
-    cloning the repo seed descriptions from it (matched on content hash) instead of re-calling the
-    LLM. Requires an existing cache — call `parse` first. The next `parse` on a cold clone reuses
-    these descriptions automatically.
+    Snapshot the project's LLM-generated descriptions AND its struct notes to a committed
+    tostr.lock.json, so teammates cloning the repo seed descriptions from it (matched on content
+    hash) instead of re-calling the LLM, and inherit the notes earlier sessions accumulated.
+    Requires an existing cache — call `parse` first. The next `parse` on a cold clone reuses both
+    automatically.
+
+    Run this after leaving notes you want to outlive this machine's cache: a note lives only in the
+    local .tostr/ cache until it is exported here and committed.
 
     Args:
         workspace_path: The ABSOLUTE path to the project workspace. DO NOT use '.' or relative paths.
@@ -359,9 +462,10 @@ async def export(workspace_path: str, with_vectors: bool = False) -> str:
         configure_mcp_logging(target_path)
         report = export_lockfile(target_path, with_vectors=with_vectors)
         name = Path(report["path"]).name
+        summary = f"{report['entries_written']} descriptions, {report['notes_written']} notes"
         if report["changed"]:
-            return f"Success: wrote {name} ({report['entries_written']} descriptions) at {report['path']}."
-        return f"Success: {name} already up to date ({report['entries_written']} descriptions)."
+            return f"Success: wrote {name} ({summary}) at {report['path']}."
+        return f"Success: {name} already up to date ({summary})."
     except Exception as e:
         return f"Error: {e}"
 

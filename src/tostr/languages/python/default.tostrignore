@@ -150,3 +150,6 @@ cython_debug/
 
 # Tests
 *test*
+
+/.claude/
+/.skills/

@@ -44,6 +44,13 @@ CACHE_FORMAT_HISTORY: List[FormatVersion] = [
                 "param types. Pre-versioned caches (user_version 0) use the old param-name UIDs and "
                 "must be rebuilt.",
     ),
+    FormatVersion(
+        2,
+        breaking=False,
+        summary="Adds the `notes` table (struct annotations) and the structs "
+                "`date_added`/`date_last_updated` columns. Purely additive — a v1 cache reads "
+                "correctly, it simply has no notes and null timestamps until the next parse.",
+    ),
 ]
 
 CURRENT_CACHE_VERSION: int = CACHE_FORMAT_HISTORY[-1].version
