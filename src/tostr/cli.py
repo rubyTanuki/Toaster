@@ -86,6 +86,7 @@ theme = Theme({
     # Notes read as dim commentary like descriptions, but tinted so a pinned note is
     # distinguishable from a generated `//` summary at a glance.
     "tostr.note": "dim italic cyan",
+    "tostr.filepath": "dim bold white"
 })
 
 console = Console(highlighter=TostrHighlighter(), theme=theme)
@@ -483,6 +484,7 @@ def _render_inspect(result: Union[InspectResult, str], pretty: bool = True, lang
         console.print(result)
         return
 
+
     # Header
     header_text = Text()
     header_text.append(result.id, style="tostr.uid")
@@ -494,6 +496,7 @@ def _render_inspect(result: Union[InspectResult, str], pretty: bool = True, lang
         header_text.append(line_info, style="tostr.line_num")
 
     if result.type in ["BaseClass", "BaseMethod", "BaseField"]:
+        console.print(Text(f"From {result.filepath}:", style="tostr.filepath"))
         header_text.append(f" | {result.signature}", style="bold white")
     else:
         header_text.append(f" | {result.uid}", style="tostr.uid")

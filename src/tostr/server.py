@@ -187,6 +187,7 @@ def _render_inspect(result: Union[InspectResult, str]) -> str:
     
     header = f"{result.id} | {result.uid}"
     if result.type in ["BaseClass", "BaseMethod", "BaseField"]:
+        lines.append(f"Filepath: {result.filepath}")
         if result.start_line != result.end_line:
             header = f"{result.id} @L{result.start_line}-{result.end_line} | {result.signature}"
         else:
