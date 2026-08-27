@@ -44,14 +44,23 @@ or the task is not about code comprehension, just use native tools.
 4. **Read implementation + dependencies** with `inspect` (by id or uid). Request the
    body only when you actually need the source. Inspect output encodes the dependency
    graph: `>` outbound (this struct depends on the listed id), `<` inbound (the listed
-   id uses this struct), `~` related/sibling, `//` AI/docstring summary, `#` a
-   human-authored note. Use these edges to trace call paths instead of grepping for
+   id uses this struct), `~` related/sibling, `//` AI/docstring summary, `#` a note
+   pinned to the struct. Use these edges to trace call paths instead of grepping for
    identifiers across the tree.
-5. **Record what the code can't say** with `note_add` — durable commentary pinned to a
-   struct, shown at the top of every later `inspect` and preserved across reparses. Use
-   it for non-obvious invariants, rejected approaches, known bugs, or the reasoning
-   behind a decision; not for restating what the code or its `//` summary already says.
-   `note_edit` / `note_remove` maintain them.
+5. **Remember what you learned** with `note_add` — this is your memory across sessions.
+   A note is pinned to a struct, survives reparses, and is shown right under the `//`
+   summary on every later `inspect` of it, so the next session sees it without knowing
+   to look. Use it
+   instead of writing yourself docstrings or comments in the source, which clutters the
+   code for the people reading it. Worth a note: a non-obvious invariant, a gotcha you
+   hit, an approach that failed and why, the reasoning behind a decision, the state of
+   work you're handing off. Not worth a note: restating the code, duplicating the `//`
+   summary, narrating what you just did. `note_edit` supersedes a note as your
+   understanding sharpens; `note_remove` retires one that has gone stale — a wrong note
+   is worse than none, since later sessions will trust it.
+
+**Read notes before re-deriving anything.** If a struct carries a `#` line, an earlier
+session already paid for that knowledge.
 
 Typical loop: `skeleton` (orient) → `search` (locate) → `inspect` (understand + follow
 edges) → repeat as you walk the graph.

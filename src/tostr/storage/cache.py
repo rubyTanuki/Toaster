@@ -323,8 +323,8 @@ class StructCache:
 
             # Notes live in their own table, never a `structs` column. Only structs that
             # actually carry notes in memory are flushed: a freshly parsed struct has an empty list
-            # (notes come from the user, not from source), and writing that back would wipe every
-            # note in the project on the next reparse.
+            # (notes are written through the note API, never derived from source), and writing that
+            # back would wipe every note in the project on the next reparse.
             notes = data_dict.pop("notes", None)
             if notes:
                 notes_by_struct[node.id] = notes
@@ -378,8 +378,8 @@ class StructCache:
         """Attach a note to `struct` and write it straight through to the `notes` table, returning
         the persisted `Note` (its `id` is the row's primary key).
 
-        Write-through rather than deferred: notes are authored one at a time by a user, not produced
-        by a parse, so there may never be a `save_to_cache` to flush them. When the `_max_notes` cap
+        Write-through rather than deferred: notes are written one at a time by an agent or user,
+        not produced by a parse, so there may never be a `save_to_cache` to flush them. When the `_max_notes` cap
         evicts older notes, their rows are deleted here too."""
         if not self.db:
             raise RuntimeError("SqLiteCache not provided.")

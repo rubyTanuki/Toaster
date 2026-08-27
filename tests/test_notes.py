@@ -214,23 +214,27 @@ async def test_inspect_dump_carries_notes(project):
 
 
 @pytest.mark.integration
-async def test_renderers_put_notes_above_the_description(project):
-    """Both the CLI and MCP renderers must place notes between the header and everything
-    Tostr derived itself."""
+async def test_renderers_put_notes_under_the_description(project):
+    """Both renderers place notes directly under the description: the summary is the core context
+    and the notes annotate it, so the description leads and notes follow it — but both still come
+    before the edges and members."""
     from tostr.commands import inspect_async, note_add_async
     from tostr.server import _render_inspect as render_mcp
 
     cache, registry = await _parsed_cache(project)
+    # Needs a struct carrying all three, so the assertion pins the full ordering.
     struct = next(s for s in registry.uid_map.values()
-                  if type(s).__name__ == "BaseMethod" and s.description)
-    await note_add_async(struct.id, "a human said this", "avery", project)
+                  if type(s).__name__ == "BaseMethod" and s.description
+                  and (s.inbound_dependency_strings or s.outbound_dependency_strings))
+    await note_add_async(struct.id, "a prior session left this", "avery", project)
 
     result = (await inspect_async([struct.id], project))[0]
     lines = render_mcp(result).splitlines()
     note_line = next(i for i, l in enumerate(lines) if l.startswith("# ["))
     desc_line = next(i for i, l in enumerate(lines) if l.startswith("// "))
-    assert 0 < note_line < desc_line
-    assert "a human said this" in lines[note_line]
+    edge_line = next(i for i, l in enumerate(lines) if l.startswith(("< ", "> ")))
+    assert 0 < desc_line < note_line < edge_line
+    assert "a prior session left this" in lines[note_line]
     assert "avery" in lines[note_line]
 
     # The CLI renderer writes to a rich Console; capture it the same way.
@@ -246,7 +250,8 @@ async def test_renderers_put_notes_above_the_description(project):
     cli_lines = [l for l in buffer.export_text().splitlines() if l.strip()]
     cli_note = next(i for i, l in enumerate(cli_lines) if l.startswith("# ["))
     cli_desc = next(i for i, l in enumerate(cli_lines) if l.startswith("// "))
-    assert 0 < cli_note < cli_desc
+    cli_edge = next(i for i, l in enumerate(cli_lines) if l.startswith(("< ", "> ")))
+    assert 0 < cli_desc < cli_note < cli_edge
 
 
 @pytest.mark.integration

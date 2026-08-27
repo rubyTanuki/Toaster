@@ -113,7 +113,8 @@ class SqliteClient:
                 )
             """)
 
-            # NOTES TABLE (human-authored commentary hanging off a struct)
+            # NOTES TABLE (durable annotations hanging off a struct — mostly agent memory
+            # written across sessions, plus anything a user pins by hand)
             #
             # Deliberately a plain table, not fts5: notes are meant to be found through the same
             # semantic vector search as everything else, so a second lexical index would be a

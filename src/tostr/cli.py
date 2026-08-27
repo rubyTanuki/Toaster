@@ -50,8 +50,9 @@ app = typer.Typer(
 
 note_app = typer.Typer(
     name="note",
-    help="Attach human-authored notes to a struct. Notes live alongside the code in the cache, "
-         "survive reparses, and surface at the top of `tostr inspect`.",
+    help="Pin durable notes to a struct — mostly written by agents as memory across sessions, "
+         "so findings persist without being dumped into the source as docstrings. Notes live in "
+         "the cache, survive reparses, and surface under the summary in `tostr inspect`.",
     no_args_is_help=True,
 )
 app.add_typer(note_app)
@@ -71,7 +72,7 @@ class TostrHighlighter(RegexHighlighter):
         r"(?P<edge>[<>\~])",
         # Capture structural sections blocks headers (fields:, methods:)
         r"(?P<section>fields:|methods:)",
-        # Capture human-authored notes (# [3] avery (2026-08-25): ...)
+        # Capture struct notes (# [3] avery (2026-08-25): ...)
         r"(?P<note>#\s\[\d+\][^\n]*)"
     ]
 
@@ -82,8 +83,8 @@ theme = Theme({
     "tostr.line_num": "green",
     "tostr.edge": "bold magenta",
     "tostr.section": "bold yellow",
-    # Notes read as dim commentary like descriptions, but tinted so a human annotation is
-    # distinguishable from an AI-generated `//` summary at a glance.
+    # Notes read as dim commentary like descriptions, but tinted so a pinned note is
+    # distinguishable from a generated `//` summary at a glance.
     "tostr.note": "dim italic cyan",
 })
 
@@ -505,7 +506,8 @@ def _render_inspect(result: Union[InspectResult, str], pretty: bool = True, lang
         desc = f"// {result.description}"
         console.print(Text(desc, style="tostr.comment"))
 
-    # Notes
+    # Notes annotate the description rather than replace it: the summary is the core context, so
+    # it leads and notes follow. The id is shown because `tostr note edit/remove` takes it.
     for note in result.notes:
         stamp = note.date_last_updated or note.date_added
         console.print(Text(f"# [{note.id}] {note.author} ({stamp}): {note.content}", style="tostr.note"))

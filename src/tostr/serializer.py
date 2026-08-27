@@ -8,8 +8,8 @@ from typing import List, Optional, Union
 
 @dataclass
 class NoteResult:
-    """A struct's human-authored note, flattened for rendering. `id` is what `tostr note
-    edit/remove` addresses, so it has to survive into the output."""
+    """A note pinned to a struct, flattened for rendering. `id` is what `tostr note edit/remove`
+    and the note_edit/note_remove tools address, so it has to survive into the output."""
     id: Optional[int]
     content: str
     author: str = ""
