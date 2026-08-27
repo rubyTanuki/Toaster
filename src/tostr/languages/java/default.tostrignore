@@ -84,3 +84,6 @@ out/
 
 # Tests
 *test*
+
+/.claude/
+/.skills/

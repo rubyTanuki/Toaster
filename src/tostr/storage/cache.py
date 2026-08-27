@@ -41,6 +41,36 @@ class StructCache:
     # are never read off hydrated structs used as resolution/skeleton context.
     SLIM_EXCLUDED_COLUMNS = ("body", "description")
 
+    def _apply_timestamps(self, instance: BaseStruct, struct_data: dict):
+        """Restore the stored first-seen/last-updated stamps onto a hydrated struct — the builders
+        construct from source-shaped fields only, so both would otherwise read as 'now'."""
+        if struct_data.get("date_added"):
+            instance.date_added = parse_timestamp(struct_data["date_added"])
+        if struct_data.get("date_last_updated"):
+            instance.date_last_updated = parse_timestamp(struct_data["date_last_updated"])
+
+    def _attach_notes(self, conn, struct_ids: List[str]):
+        """Hang each struct's stored notes back onto the hydrated object, carrying the note id
+        so a later edit/delete addresses the same row."""
+        struct_ids = [sid for sid in struct_ids if sid in self.struct_store.id_map]
+        if not struct_ids:
+            return
+        for chunk_start in range(0, len(struct_ids), 500):
+            chunk = struct_ids[chunk_start:chunk_start + 500]
+            placeholders = ",".join(["?"] * len(chunk))
+            rows = conn.execute(
+                "SELECT id, struct_id, content, author, date_added, date_last_updated "
+                f"FROM notes WHERE struct_id IN ({placeholders}) ORDER BY id",
+                chunk,
+            ).fetchall()
+            for row in rows:
+                struct = self.struct_store.id_map.get(str(row["struct_id"]))
+                if struct is None:
+                    continue
+                note = Note.from_dict(dict(row))
+                if not any(existing.id == note.id for existing in struct.notes):
+                    struct.notes.append(note)
+
     def load_filepath(self, path: Path, slim: bool = False) -> BaseStruct:
         """Hydrate the subtree under `path` into the store. `slim=True` skips the body and
         description columns — right for read-only context (watcher resolution, skeletons) where
@@ -83,11 +113,17 @@ class StructCache:
                 
                 if instance:
                     instance.id = str(struct_data["id"])
+                    self._apply_timestamps(instance, struct_data)
                     self.struct_store.add_hydrated_struct(instance)
-            
+
+            # Slim hydration is read-only resolution context, which never reads notes — skip the
+            # extra scan there for the same reason bodies and descriptions are skipped.
+            if not slim:
+                self._attach_notes(conn, node_ids)
+
             if not node_ids:
                 return None
-            
+
             placeholders = ",".join(["?"] * len(node_ids))
             
             if path_str == ".":
@@ -161,11 +197,14 @@ class StructCache:
                     instance = builder.with_type(struct_type=struct_data["type"]).from_dict(struct_data)
                     if instance:
                         instance.id = current_id
+                        self._apply_timestamps(instance, struct_data)
                         self.struct_store.add_hydrated_struct(instance)
-            
+
+            self._attach_notes(conn, struct_ids)
+
             if not struct_ids:
                 return None
-            
+
             placeholders = ",".join(["?"] * len(struct_ids))
             sql = f"SELECT source_id, target_id, edge_type FROM edges WHERE (source_id IN ({placeholders}) OR target_id IN ({placeholders})) AND edge_type = 'is_child_of'"
             cursor.execute(sql, struct_ids + struct_ids)
@@ -215,6 +254,9 @@ class StructCache:
         cursor.execute(f"DELETE FROM edges WHERE source_id IN ({ph})", rp)
         cursor.execute(f"DELETE FROM edges WHERE target_id IN ({ph})", rp)
         cursor.execute(f"DELETE FROM vec_structs WHERE struct_id IN ({ph})", rp)
+        # The notes FK cascade is inert (foreign_keys is off on these connections — see the schema
+        # note in db.init_db), so a deleted struct's notes have to be dropped explicitly.
+        self.db.delete_notes_for_structs(ids, conn=conn)
         return ids
 
     def _prune_file_path(self, conn, path_str: str, kept_ids: Set[str]) -> Set[str]:
@@ -257,24 +299,38 @@ class StructCache:
         grouped_nodes = defaultdict(list)
         all_edges = set()
         vectors = []
-        
+        notes_by_struct = {}
+        # A reparse rebuilds structs from source, so `date_added` would otherwise be "now" on every
+        # write. Keep the first-seen timestamp for ids already in the cache.
+        first_seen = self.db.struct_date_added()
+
         def serialize_for_db(value):
             if isinstance(value, (dict, list, tuple, set)):
                 if isinstance(value, set):
                     value = list(value)
                 return json.dumps(value)
             return value
-        
+
         for node in self.struct_store.parsed_uid_map.values():
             data_dict = node.to_dict()
             if stale and data_dict.get("description"):
                 data_dict["description"] = f"[STALE] {data_dict['description']}"
-            
+
             # Extract vector if present for separate virtual table storage
             vector = data_dict.pop("vector", None)
             if vector is not None:
                 vectors.append((node.id, sqlite_vec.serialize_float32(vector)))
-            
+
+            # Notes live in their own table, never a `structs` column. Only structs that
+            # actually carry notes in memory are flushed: a freshly parsed struct has an empty list
+            # (notes come from the user, not from source), and writing that back would wipe every
+            # note in the project on the next reparse.
+            notes = data_dict.pop("notes", None)
+            if notes:
+                notes_by_struct[node.id] = notes
+
+            data_dict["date_added"] = first_seen.get(node.id) or data_dict["date_added"]
+
             column_footprint = tuple(data_dict.keys())
             grouped_nodes[column_footprint].append(data_dict) 
             all_edges.update(node.edges)
@@ -300,6 +356,15 @@ class StructCache:
                     conn.executemany("DELETE FROM vec_structs WHERE struct_id = ?", [(v[0],) for v in vectors])
                 conn.executemany("INSERT INTO vec_structs (struct_id, vector) VALUES (?, ?)", vectors)
 
+            for struct_id, notes in notes_by_struct.items():
+                note_ids = self.db.replace_struct_notes(struct_id, notes, conn=conn)
+                # Mirror the freshly assigned ids back so in-memory notes stay addressable
+                # (a note written for the first time has `id is None` until this point).
+                struct = self.struct_store.id_map.get(str(struct_id))
+                if struct:
+                    for note, note_id in zip(struct.notes, note_ids):
+                        note.id = note_id
+
             # Diff-prune: now that the freshly-parsed structs are written, remove anything that used
             # to live under these paths but is gone from this parse (deleted/renamed members).
             if prune_paths:
@@ -308,6 +373,66 @@ class StructCache:
                     self._prune_file_path(conn, path_str, kept_ids)
 
             conn.commit()
+
+    def add_note(self, struct: BaseStruct, content: str, author: str) -> Note:
+        """Attach a note to `struct` and write it straight through to the `notes` table, returning
+        the persisted `Note` (its `id` is the row's primary key).
+
+        Write-through rather than deferred: notes are authored one at a time by a user, not produced
+        by a parse, so there may never be a `save_to_cache` to flush them. When the `_max_notes` cap
+        evicts older notes, their rows are deleted here too."""
+        if not self.db:
+            raise RuntimeError("SqLiteCache not provided.")
+
+        persisted_before = {n.id for n in struct.notes if n.id is not None}
+        note = struct.add_note(content, author)
+        evicted = persisted_before - {n.id for n in struct.notes if n.id is not None}
+
+        with self.db.get_connection() as conn:
+            for note_id in evicted:
+                self.db.delete_note(note_id, conn=conn)
+            note.id = self.db.insert_note(
+                struct.id, note.content, note.author,
+                note.date_added.isoformat(), note.date_last_updated.isoformat(),
+                conn=conn,
+            )
+            self.db.touch_struct(struct.id, struct.date_last_updated.isoformat(), conn=conn)
+            conn.commit()
+        logger.debug(f"Added note {note.id} to {struct.uid}")
+        return note
+
+    def edit_note(self, note: Note, content: str, author: str, struct: Optional[BaseStruct] = None) -> bool:
+        """Rewrite a note in place. Returns False when the note was never persisted or its row is
+        gone (the in-memory edit still applies)."""
+        note.edit(content, author)
+        if not self.db or note.id is None:
+            return False
+        with self.db.get_connection() as conn:
+            updated = self.db.update_note(
+                note.id, note.content, note.author, note.date_last_updated.isoformat(), conn=conn
+            )
+            if struct is not None:
+                struct.date_last_updated = note.date_last_updated
+                self.db.touch_struct(struct.id, struct.date_last_updated.isoformat(), conn=conn)
+            conn.commit()
+        return updated
+
+    def delete_note(self, struct: BaseStruct, note: Note) -> bool:
+        """Detach a note from `struct` and drop its row."""
+        struct.notes = [n for n in struct.notes if n is not note]
+        if not self.db or note.id is None:
+            return False
+        deleted = self.db.delete_note(note.id)
+        note.id = None
+        return deleted
+
+    def notes_for(self, struct: BaseStruct) -> List[Note]:
+        """The struct's notes, read through to the cache when the object was built without them
+        (e.g. freshly parsed rather than hydrated)."""
+        if struct.notes or not self.db:
+            return struct.notes
+        struct.notes = [Note.from_dict(dict(row)) for row in self.db.notes_for_structs([struct.id])]
+        return struct.notes
 
     #endregion
 
