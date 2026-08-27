@@ -32,15 +32,22 @@ def path_for(project_path: Path) -> Path:
     return project_path / LOCKFILE_NAME
 
 
-def write(project_path: Path, entries: Dict[str, dict]) -> bool:
-    """Serialize `entries` to `<project_root>/tostr.lock.json` deterministically (sorted keys, stable
-    indentation, trailing newline) so diffs review cleanly. Skips the write when the bytes are
-    identical to the existing file, so an export that changed nothing doesn't churn git. Returns True
-    iff the file was (re)written."""
+def write(project_path: Path, entries: Dict[str, dict], notes: Optional[Dict[str, list]] = None) -> bool:
+    """Serialize `entries` (and `notes`) to `<project_root>/tostr.lock.json` deterministically
+    (sorted keys, stable indentation, trailing newline) so diffs review cleanly. Skips the write when
+    the bytes are identical to the existing file, so an export that changed nothing doesn't churn
+    git. Returns True iff the file was (re)written.
+
+    `notes` is a separate top-level `{uid: [note, ...]}` map rather than a field inside `entries`
+    for two reasons: entries only contains structs that *have* a description, while a struct can
+    carry notes without one; and entry reuse is gated on `diff_hash`, which is right for a
+    description (it describes the body) and wrong for a note (an observation about a function
+    usually outlives an edit to it)."""
     payload = {
         "tostr_lock_version": LOCKFILE_VERSION,
         "cache_format_version": CURRENT_CACHE_VERSION,
         "entries": entries,
+        "notes": notes or {},
     }
     serialized = json.dumps(payload, indent=2, sort_keys=True, ensure_ascii=False) + "\n"
 
@@ -50,15 +57,15 @@ def write(project_path: Path, entries: Dict[str, dict]) -> bool:
         logger.debug(f"{LOCKFILE_NAME} already up to date")
         return False
     lockfile_path.write_text(serialized, encoding="utf-8")
-    logger.info(f"Wrote {LOCKFILE_NAME} ({len(entries)} description(s))")
+    note_count = sum(len(v) for v in (notes or {}).values())
+    logger.info(f"Wrote {LOCKFILE_NAME} ({len(entries)} description(s), {note_count} note(s))")
     return True
 
 
-def read(project_path: Path) -> Optional[Dict[str, dict]]:
-    """Load and validate the lockfile, returning its `{uid: {diff_hash, description, vector?}}`
-    entries map. Returns None (caller treats as "no lockfile") when the file is absent, unreadable,
-    or its `cache_format_version` is incompatible with this build — a breaking UID-scheme change
-    would no-match anyway; the guard skips a stale lockfile cleanly instead of silently."""
+def _load(project_path: Path) -> Optional[dict]:
+    """Read and validate the lockfile payload, or None when it is absent, unreadable, or written
+    against an incompatible cache format — a breaking UID-scheme change would no-match anyway; the
+    guard skips a stale lockfile cleanly instead of silently."""
     lockfile_path = path_for(project_path)
     if not lockfile_path.exists():
         return None
@@ -72,5 +79,17 @@ def read(project_path: Path) -> Optional[Dict[str, dict]]:
     if reason:
         logger.warning(f"{LOCKFILE_NAME} is incompatible with this build ({reason}); ignoring lockfile")
         return None
+    return data
 
-    return data.get("entries", {})
+
+def read(project_path: Path) -> Optional[Dict[str, dict]]:
+    """The lockfile's `{uid: {diff_hash, description, vector?}}` entries map, or None."""
+    data = _load(project_path)
+    return None if data is None else data.get("entries", {})
+
+
+def read_notes(project_path: Path) -> Dict[str, list]:
+    """The lockfile's `{uid: [note, ...]}` map. Returns `{}` for a missing, unreadable, or
+    incompatible lockfile, and for one written before notes were exported."""
+    data = _load(project_path)
+    return (data or {}).get("notes", {}) or {}

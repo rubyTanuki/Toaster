@@ -443,10 +443,14 @@ async def clean(workspace_path: str, purge: bool = False) -> str:
 @mcp.tool()
 async def export(workspace_path: str, with_vectors: bool = False) -> str:
     """
-    Snapshot the project's LLM-generated descriptions to a committed tostr.lock.json so teammates
-    cloning the repo seed descriptions from it (matched on content hash) instead of re-calling the
-    LLM. Requires an existing cache — call `parse` first. The next `parse` on a cold clone reuses
-    these descriptions automatically.
+    Snapshot the project's LLM-generated descriptions AND its struct notes to a committed
+    tostr.lock.json, so teammates cloning the repo seed descriptions from it (matched on content
+    hash) instead of re-calling the LLM, and inherit the notes earlier sessions accumulated.
+    Requires an existing cache — call `parse` first. The next `parse` on a cold clone reuses both
+    automatically.
+
+    Run this after leaving notes you want to outlive this machine's cache: a note lives only in the
+    local .tostr/ cache until it is exported here and committed.
 
     Args:
         workspace_path: The ABSOLUTE path to the project workspace. DO NOT use '.' or relative paths.
@@ -457,9 +461,10 @@ async def export(workspace_path: str, with_vectors: bool = False) -> str:
         configure_mcp_logging(target_path)
         report = export_lockfile(target_path, with_vectors=with_vectors)
         name = Path(report["path"]).name
+        summary = f"{report['entries_written']} descriptions, {report['notes_written']} notes"
         if report["changed"]:
-            return f"Success: wrote {name} ({report['entries_written']} descriptions) at {report['path']}."
-        return f"Success: {name} already up to date ({report['entries_written']} descriptions)."
+            return f"Success: wrote {name} ({summary}) at {report['path']}."
+        return f"Success: {name} already up to date ({summary})."
     except Exception as e:
         return f"Error: {e}"
 

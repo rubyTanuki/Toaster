@@ -508,6 +508,98 @@ class StructCache:
                     entries[uid]["vector"] = deserialized
         return entries
 
+    def collect_notes(self) -> Dict[str, list]:
+        """Read every note in the cache into a `{uid: [note, ...]}` map for the lockfile exporter.
+
+        Keyed by uid, not struct id: ids are a local md5 of the uid and note ids are local
+        autoincrement rowids, neither of which means anything on another machine. The local note id
+        is deliberately dropped — the importer assigns its own. Write half of the notes round-trip;
+        `seed_notes_from_lockfile` is the read half."""
+        if not self.db:
+            return {}
+        notes: Dict[str, list] = {}
+        for row in self.db.notes_with_uids():
+            notes.setdefault(row["uid"], []).append({
+                "content": row["content"],
+                "author": row["author"] or "",
+                "date_added": row["date_added"],
+                "date_last_updated": row["date_last_updated"],
+            })
+        return notes
+
+    @staticmethod
+    def _note_identity(note: dict) -> tuple:
+        """What makes two notes 'the same note' across machines, given row ids don't survive export.
+
+        Author plus creation instant — deliberately NOT content. `Note.edit` rewrites content and
+        `date_last_updated` but never `date_added`, so keying on identity-not-content is what lets
+        an edit propagate as an update instead of importing as a second, contradictory note beside
+        the stale one. `date_added` carries microseconds, so collisions aren't a practical concern."""
+        return (note.get("author", "") or "", note.get("date_added"))
+
+    def seed_notes_from_lockfile(self) -> int:
+        """Import the committed lockfile's notes into the cache, so a teammate's cold clone (or a
+        rebuilt cache) gets the notes earlier sessions accumulated. Returns the number inserted.
+
+        Merges rather than replaces, so this is idempotent across repeated parses and never
+        clobbers notes written locally since the last export. Per incoming note:
+          * unknown identity  -> insert it
+          * known, lockfile's `date_last_updated` is newer -> update in place (someone edited the
+            note and committed it; the local copy is the stale one)
+          * known, local copy is same-age or newer -> leave it alone
+
+        Unlike descriptions, notes are not gated on `diff_hash` — an observation about a function
+        generally outlives an edit to it, and a note whose struct has since changed is exactly the
+        note a reader wants to see.
+
+        Notes for uids that no longer exist are skipped: the struct was renamed or deleted, and
+        there is nothing to attach them to."""
+        if not self.db or not self.use_lockfile or not self.paths.project_path:
+            return 0
+        incoming = lockfile.read_notes(self.paths.project_path)
+        if not incoming:
+            return 0
+
+        with self.db.get_connection() as conn:
+            uid_to_id = {r["uid"]: str(r["id"]) for r in conn.execute("SELECT id, uid FROM structs")}
+            target_ids = [uid_to_id[uid] for uid in incoming if uid in uid_to_id]
+            # {struct_id: {identity: (note_id, date_last_updated)}}
+            existing: Dict[str, Dict[tuple, tuple]] = {}
+            for row in self.db.notes_for_structs(target_ids):
+                existing.setdefault(str(row["struct_id"]), {})[self._note_identity(dict(row))] = (
+                    row["id"], row["date_last_updated"] or ""
+                )
+
+            inserted = updated = 0
+            for uid, notes in incoming.items():
+                struct_id = uid_to_id.get(uid)
+                if struct_id is None:
+                    logger.debug(f"Skipping {len(notes)} lockfile note(s) for unknown uid '{uid}'")
+                    continue
+                seen = existing.setdefault(struct_id, {})
+                for note in notes:
+                    identity = self._note_identity(note)
+                    content = note.get("content", "")
+                    author = note.get("author", "") or ""
+                    touched = note.get("date_last_updated") or ""
+                    known = seen.get(identity)
+                    if known is None:
+                        note_id = self.db.insert_note(
+                            struct_id, content, author,
+                            note.get("date_added"), touched, conn=conn,
+                        )
+                        seen[identity] = (note_id, touched)
+                        inserted += 1
+                    elif touched > (known[1] or ""):
+                        self.db.update_note(known[0], content, author, touched, conn=conn)
+                        seen[identity] = (known[0], touched)
+                        updated += 1
+            conn.commit()
+
+        if inserted or updated:
+            logger.info(f"Seeded {inserted} note(s) and updated {updated} from {lockfile.LOCKFILE_NAME}")
+        return inserted + updated
+
     def load_lockfile_lookup(self) -> Dict[str, dict]:
         """Load the committed `tostr.lock.json` into an in-memory `{uid: {diff_hash, description,
         vector?}}` lookup for the describer to consult as a *second* description source — after the

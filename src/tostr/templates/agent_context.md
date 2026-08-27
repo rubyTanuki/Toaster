@@ -62,6 +62,11 @@ or the task is not about code comprehension, just use native tools.
 **Read notes before re-deriving anything.** If a struct carries a `#` line, an earlier
 session already paid for that knowledge.
 
+A note lives only in this machine's `.tostr/` cache until it is exported: `export`
+snapshots notes (and descriptions) into the committed `tostr.lock.json`, and the next
+`parse` on any clone seeds them back. Mention that to the user when you've left notes
+worth sharing — exporting writes a tracked file, so it's their call, not yours.
+
 Typical loop: `skeleton` (orient) → `search` (locate) → `inspect` (understand + follow
 edges) → repeat as you walk the graph.
 

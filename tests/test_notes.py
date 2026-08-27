@@ -291,3 +291,187 @@ async def test_note_commands_reject_bad_references(project):
 
 
 #endregion
+
+#region LOCKFILE ROUND-TRIP
+
+
+async def _export(project: Path):
+    from tostr.commands import export_lockfile
+    return export_lockfile(project)
+
+
+def _lockfile(project: Path) -> dict:
+    import json
+    return json.loads((project / "tostr.lock.json").read_text())
+
+
+def _note_rows(project: Path):
+    from tostr.storage.db import SqliteClient
+    return SqliteClient(ProjectPaths(project)).notes_with_uids()
+
+
+@pytest.mark.integration
+async def test_export_writes_notes_keyed_by_uid(project):
+    from tostr.commands import note_add_async
+
+    _, registry = await _parsed_cache(project)
+    struct = _a_method(registry)
+    await note_add_async(struct.id, "an exported observation", "avery", project)
+
+    report = await _export(project)
+    assert report["notes_written"] == 1
+
+    payload = _lockfile(project)
+    assert list(payload["notes"]) == [struct.uid]
+    note = payload["notes"][struct.uid][0]
+    assert note["content"] == "an exported observation"
+    assert note["author"] == "avery"
+    # Local row ids are meaningless on another machine and must not be exported.
+    assert "id" not in note
+
+
+@pytest.mark.integration
+async def test_notes_survive_a_wiped_cache(project):
+    """The point of exporting: a cold clone (or rebuilt cache) inherits the notes."""
+    import shutil
+    from tostr.commands import note_add_async, parse_async, inspect_async
+
+    _, registry = await _parsed_cache(project)
+    struct = _a_method(registry)
+    await note_add_async(struct.id, "must survive the wipe", "avery", project)
+    await _export(project)
+
+    shutil.rmtree(project / ".tostr")
+    await parse_async(project, no_llm=True)
+
+    result = (await inspect_async([struct.uid], project))[0]
+    assert [n.content for n in result.notes] == ["must survive the wipe"]
+
+
+@pytest.mark.integration
+async def test_seeding_is_idempotent(project):
+    from tostr.commands import note_add_async, parse_async
+
+    _, registry = await _parsed_cache(project)
+    struct = _a_method(registry)
+    await note_add_async(struct.id, "only once", "avery", project)
+    await _export(project)
+
+    for _ in range(3):
+        await parse_async(project, no_llm=True)
+    assert len(_note_rows(project)) == 1
+
+
+@pytest.mark.integration
+async def test_seeding_merges_rather_than_replaces(project):
+    """A note written after the last export must not be clobbered by re-importing the lockfile,
+    and must not stop the lockfile's own notes from landing."""
+    import shutil
+    from tostr.commands import note_add_async, parse_async
+
+    _, registry = await _parsed_cache(project)
+    struct = _a_method(registry)
+    await note_add_async(struct.id, "exported one", "avery", project)
+    await _export(project)
+
+    await note_add_async(struct.id, "written after the export", "avery", project)
+    await parse_async(project, no_llm=True)
+    assert {r["content"] for r in _note_rows(project)} == {"exported one", "written after the export"}
+
+    # And on a cold cache the local-only note is simply absent — it was never exported.
+    shutil.rmtree(project / ".tostr")
+    await parse_async(project, no_llm=True)
+    assert {r["content"] for r in _note_rows(project)} == {"exported one"}
+
+
+@pytest.mark.integration
+async def test_an_edited_note_imports_as_an_update(project):
+    """A teammate edits a note and commits it. The next parse here must rewrite our copy, not
+    leave the stale text sitting beside the new one."""
+    import json
+    from tostr.commands import note_add_async, parse_async, inspect_async
+
+    _, registry = await _parsed_cache(project)
+    struct = _a_method(registry)
+    await note_add_async(struct.id, "first understanding", "avery", project)
+    await _export(project)
+
+    # Simulate the teammate's committed edit: same note (author + date_added), newer content.
+    path = project / "tostr.lock.json"
+    payload = json.loads(path.read_text())
+    entry = payload["notes"][struct.uid][0]
+    entry["content"] = "sharper understanding"
+    entry["date_last_updated"] = "2099-01-01T00:00:00"
+    path.write_text(json.dumps(payload))
+
+    await parse_async(project, no_llm=True)
+    result = (await inspect_async([struct.uid], project))[0]
+    assert [n.content for n in result.notes] == ["sharper understanding"]
+
+
+@pytest.mark.integration
+async def test_a_newer_local_edit_is_not_overwritten(project):
+    """Our copy is newer than the committed one, so the stale lockfile must not clobber it."""
+    import json
+    from tostr.commands import note_add_async, parse_async, inspect_async
+
+    _, registry = await _parsed_cache(project)
+    struct = _a_method(registry)
+    _, note = await note_add_async(struct.id, "local latest", "avery", project)
+    await _export(project)
+
+    path = project / "tostr.lock.json"
+    payload = json.loads(path.read_text())
+    entry = payload["notes"][struct.uid][0]
+    entry["content"] = "older committed text"
+    entry["date_last_updated"] = "2000-01-01T00:00:00"
+    path.write_text(json.dumps(payload))
+
+    await parse_async(project, no_llm=True)
+    result = (await inspect_async([struct.uid], project))[0]
+    assert [n.content for n in result.notes] == ["local latest"]
+
+
+@pytest.mark.integration
+async def test_seeding_skips_notes_for_unknown_uids(project):
+    """A note whose struct was renamed or deleted has nothing to attach to."""
+    import json
+    from tostr.commands import note_add_async, parse_async
+
+    _, registry = await _parsed_cache(project)
+    struct = _a_method(registry)
+    await note_add_async(struct.id, "real", "avery", project)
+    await _export(project)
+
+    path = project / "tostr.lock.json"
+    payload = json.loads(path.read_text())
+    payload["notes"]["models.py#User.ghost(...)"] = [
+        {"content": "orphan", "author": "x", "date_added": "2026-01-01T00:00:00",
+         "date_last_updated": "2026-01-01T00:00:00"}
+    ]
+    path.write_text(json.dumps(payload))
+
+    await parse_async(project, no_llm=True)
+    assert {r["content"] for r in _note_rows(project)} == {"real"}
+
+
+@pytest.mark.integration
+async def test_lockfile_without_notes_key_is_tolerated(project):
+    """Lockfiles written before notes existed must still load."""
+    import json
+    from tostr.storage import lockfile
+    from tostr.commands import parse_async
+
+    await _parsed_cache(project)
+    await _export(project)
+
+    path = project / "tostr.lock.json"
+    payload = json.loads(path.read_text())
+    del payload["notes"]
+    path.write_text(json.dumps(payload))
+
+    assert lockfile.read_notes(project) == {}
+    await parse_async(project, no_llm=True)  # must not raise
+
+
+#endregion

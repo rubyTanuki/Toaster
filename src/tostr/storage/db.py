@@ -280,6 +280,16 @@ class SqliteClient:
                 ))
             return note_ids
 
+    def notes_with_uids(self) -> List[sqlite3.Row]:
+        """Every note in the cache joined to its struct's uid, oldest first — the export shape.
+        Notes whose struct is missing are dropped by the join: a uid is the only handle that means
+        anything on another machine, so an orphan has nothing to reattach to."""
+        with self.get_connection() as conn:
+            return conn.execute(
+                "SELECT s.uid, n.content, n.author, n.date_added, n.date_last_updated "
+                "FROM notes n JOIN structs s ON s.id = n.struct_id ORDER BY s.uid, n.id"
+            ).fetchall()
+
     def touch_struct(self, struct_id: str, timestamp: str, conn: Optional[sqlite3.Connection] = None) -> bool:
         """Stamp a struct's `date_last_updated` without rewriting the row — used when a note write
         changes the struct's metadata but nothing about the parsed code."""

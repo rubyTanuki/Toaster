@@ -76,18 +76,25 @@ def export_lockfile(target_path: Path, with_vectors: bool = False) -> dict:
     teammates on a cold clone can seed descriptions instead of re-calling the LLM. Orchestration
     only: the StructCache gathers the exportable entries from the cache (`collect_descriptions`) and the
     `lockfile` module owns the on-disk format (deterministic, version-stamped, no-op-aware write).
-    Only descriptions are exported by default; `with_vectors=True` also exports vectors for literal
-    zero recompute at the cost of a larger, merge-noisy file. Returns {path, entries_written,
-    changed}."""
+    Notes ride along unconditionally — they are small, hand-written, and the whole point of them is
+    to outlive one machine's cache. Only descriptions are exported by default; `with_vectors=True`
+    also exports vectors for literal zero recompute at the cost of a larger, merge-noisy file.
+    Returns {path, entries_written, notes_written, changed}."""
     _verify_db_exists(target_path)
     paths = ProjectPaths(target_path)
     registry = Registry(paths)
     cache = StructCache(paths, struct_store=registry)
 
     entries = cache.collect_descriptions(with_vectors=with_vectors)
-    changed = lockfile.write(target_path, entries)
+    notes = cache.collect_notes()
+    changed = lockfile.write(target_path, entries, notes=notes)
 
-    return {"path": str(lockfile.path_for(target_path)), "entries_written": len(entries), "changed": changed}
+    return {
+        "path": str(lockfile.path_for(target_path)),
+        "entries_written": len(entries),
+        "notes_written": sum(len(v) for v in notes.values()),
+        "changed": changed,
+    }
 
 def get_status(target_path: Path) -> dict:
     paths = ProjectPaths(target_path)
@@ -246,6 +253,10 @@ async def parse_async(target_path: Path, use_cache: bool = True, language: str |
 
     # Write Cache
     parser.cache.save_to_cache()
+
+    # Import committed notes once the struct rows exist to hang them on. Merge-and-dedupe, so this
+    # is safe to run on every parse and never overwrites notes written since the last export.
+    parser.cache.seed_notes_from_lockfile()
 
 def resolve_uid_to_id(uid: str, project_path: Path) -> str:
     """Simplifies UID to ID resolution by querying the database directly."""

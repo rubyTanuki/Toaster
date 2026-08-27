@@ -248,7 +248,7 @@ def export(
             )
     ] = False
 ):
-    """Snapshot descriptions to tostr.lock.json for version control, so teammates can seed them on a cold clone instead of re-calling the LLM. Requires an existing cache (run 'tostr parse' first)."""
+    """Snapshot descriptions and notes to tostr.lock.json for version control, so teammates can seed them on a cold clone instead of re-calling the LLM. Requires an existing cache (run 'tostr parse' first)."""
     configure_cli_logging(debug)
     try:
         report = export_lockfile(path, with_vectors=with_vectors)
@@ -257,10 +257,11 @@ def export(
         raise typer.Exit(code=1)
 
     name = Path(report["path"]).name
+    summary = f"{report['entries_written']} descriptions, {report['notes_written']} notes"
     if report["changed"]:
-        typer.secho(f"✅ Wrote {name} ({report['entries_written']} descriptions)", fg="green")
+        typer.secho(f"✅ Wrote {name} ({summary})", fg="green")
     else:
-        typer.secho(f"{name} already up to date", fg="yellow")
+        typer.secho(f"{name} already up to date ({summary})", fg="yellow")
 
 
 @app.command()
