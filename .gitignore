@@ -220,3 +220,7 @@ tests/testcode/*
 
 # Tostr generated artifacts
 .tostr/
+
+# Embedding model weights: downloaded on demand to ~/.cache/tostr/models/
+# by src/tostr/semantic/embeddings/onnx.py. Never vendored in-tree.
+resources/models/
